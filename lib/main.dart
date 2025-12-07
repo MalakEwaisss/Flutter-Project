@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 
 import 'auth_modal.dart';
-// Import local files
+
 import 'config.dart';
 import 'home_screen.dart';
 import 'screens.dart';
+import 'weather_screen.dart';
 
-// --- 0. CUSTOM SCROLL BEHAVIOR FOR SMOOTHNESS ---
+
+
 
 class SmoothScrollBehavior extends ScrollBehavior {
   @override
@@ -104,6 +106,12 @@ class _TravelHubAppState extends State<TravelHubApp> {
           navigateTo: _navigateTo,
           onLogout: _handleLogout,
           initialUserData: _currentUser,
+          isLoggedIn: _isLoggedIn,
+          showAuthModal: _showAuthModal,
+        );
+      case AppPage.weather:
+        return WeatherScreen(
+          navigateTo: _navigateTo,
           isLoggedIn: _isLoggedIn,
           showAuthModal: _showAuthModal,
         );

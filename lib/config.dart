@@ -10,7 +10,7 @@ const Color subtitleColor = Color(0xFF6B7280);
 const Color ratingColor = Color(0xFFFFC107);
 const Color successGreen = Color(0xFF059669);
 
-enum AppPage { home, trips, profile }
+enum AppPage { home, trips, profile, weather }
 
 // Dummy Trip Data (Used for Home and Trips Screen) - This is a global constant
 const List<Map<String, dynamic>> allTrips = [

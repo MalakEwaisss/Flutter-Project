@@ -114,6 +114,35 @@ class CustomAppBar extends StatelessWidget {
                   ),
                 ),
 
+                // Check Weather Button
+                ElevatedButton.icon(
+                  onPressed: () => navigateTo(AppPage.weather),
+                  icon: const Icon(
+                    Icons.wb_sunny,
+                    size: 18,
+                    color: Colors.white,
+                  ),
+                  label: const Text(
+                    'Check Weather',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF4A90E2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    elevation: 0,
+                  ),
+                ),
+
+
                 // Sign Up/Login Button
                 if (!isLoggedIn) ...[
                   const SizedBox(width: 16),
