@@ -10,6 +10,7 @@ dependencies:
   flutter:
     sdk: flutter
   supabase_flutter: ^2.12.0
+  http: ^1.1.0
 
 # After:
 dev_dependencies:

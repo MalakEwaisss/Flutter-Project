@@ -8,6 +8,7 @@ import 'screens/home_screen.dart';
 import 'screens/trips_screen.dart';
 import 'screens/trip_details_screen.dart';
 import 'screens/profile_screen.dart';
+import 'screens/booking_summary_screen.dart';
 
 class SmoothScrollBehavior extends ScrollBehavior {
   @override
@@ -114,6 +115,15 @@ class _TravelHubAppState extends State<TravelHubApp> {
         return TripDetailsScreen(
           trip: _selectedTrip!, 
           navigateTo: _navigateTo
+        );
+      case AppPage.booking:
+        // Ensure we have trip data before loading the booking screen
+        if (_selectedTrip == null) {
+          return const Center(child: Text("No trip selected. Return to Home."));
+        }
+        return BookingSummaryScreen(
+          trip: _selectedTrip!,
+          navigateTo: _navigateTo,
         );
     }
   }
