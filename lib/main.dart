@@ -2,10 +2,12 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'auth_modal.dart';
-import 'config.dart';
-import 'home_screen.dart';
-import 'screens.dart';
+import 'auth/auth_modal.dart';
+import 'config/config.dart';
+import 'screens/home_screen.dart';
+import 'screens/trips_screen.dart';
+import 'screens/trip_details_screen.dart';
+import 'screens/profile_screen.dart';
 
 class SmoothScrollBehavior extends ScrollBehavior {
   @override
