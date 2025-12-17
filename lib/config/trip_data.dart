@@ -1,16 +1,3 @@
-import 'package:flutter/material.dart';
-
-// --- CONFIGURATION & COLORS ---
-const Color primaryBlue = Color(0xFF1E3A8A);
-const Color accentOrange = Color(0xFFF96839);
-const Color lightBackground = Color(0xFFF4F7FB);
-const Color cardColor = Colors.white;
-const Color subtitleColor = Color(0xFF6B7280);
-const Color ratingColor = Color(0xFFFFC107);
-const Color successGreen = Color(0xFF059669);
-
-enum AppPage { home, trips, profile, tripDetails }
-
 // Enhanced Trip Data with your requested Unsplash Images
 const List<Map<String, dynamic>> allTrips = [
   {
@@ -39,7 +26,7 @@ const List<Map<String, dynamic>> allTrips = [
     'airline': 'Air France',
     'aircraft': 'Airbus A350-900',
     'class': 'Economy Plus',
-    'description': 'A journey through the heart of Europe’s most romantic and historic cities.',
+    'description': 'A journey through the heart of Europe\'s most romantic and historic cities.',
   },
   {
     'id': '3',
@@ -67,6 +54,6 @@ const List<Map<String, dynamic>> allTrips = [
     'airline': 'Japan Airlines',
     'aircraft': 'Boeing 777',
     'class': 'First Class',
-    'description': 'Explore the neon lights and ancient temples of Japan’s bustling capital.',
+    'description': 'Explore the neon lights and ancient temples of Japan\'s bustling capital.',
   },
 ];

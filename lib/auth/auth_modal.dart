@@ -1,8 +1,8 @@
-// auth_modal.dart
+// ignore_for_file: deprecated_member_use
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'main.dart'; // To access the global supabase client
-import 'config.dart';
+import '../main.dart'; // To access the global supabase client
+import '../config/config.dart';
 
 class AuthModal extends StatefulWidget {
   final Function(Map<String, String>) onLoginSuccess;

@@ -1,73 +1,9 @@
-// lib/screens.dart
+// ignore_for_file: deprecated_member_use
 import 'package:flutter/material.dart';
-import 'dart:math'; // For unique seat number generation
-import 'config.dart';
-import 'widgets_reusable.dart';
-import 'main.dart'; // Access global 'supabase' client
-
-// --- TRIP LIST SCREEN ---
-class TripsScreen extends StatelessWidget {
-  final Function(AppPage, {Map<String, dynamic>? trip}) navigateTo;
-  final bool isLoggedIn;
-  final Function(BuildContext context) showAuthModal;
-  final VoidCallback onThemeToggle;
-
-  const TripsScreen({
-    super.key,
-    required this.navigateTo,
-    required this.isLoggedIn,
-    required this.showAuthModal,
-    required this.onThemeToggle,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        CustomAppBar(
-          navigateTo: (page) => navigateTo(page),
-          currentPage: AppPage.trips,
-          isLoggedIn: isLoggedIn,
-          onAuthAction: () => showAuthModal(context),
-          onThemeToggle: onThemeToggle,
-        ),
-        Expanded(
-          child: SingleChildScrollView(
-            child: MaxWidthSection(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Recommended Trips',
-                    style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 30),
-                  GridView.builder(
-                    physics: const NeverScrollableScrollPhysics(),
-                    shrinkWrap: true,
-                    itemCount: allTrips.length,
-                    gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                      maxCrossAxisExtent: 400,
-                      childAspectRatio: 0.85,
-                      crossAxisSpacing: 20,
-                      mainAxisSpacing: 20,
-                    ),
-                    itemBuilder: (context, index) {
-                      return TripCard(
-                        trip: allTrips[index],
-                        onViewDetails: (trip) => navigateTo(AppPage.tripDetails, trip: trip),
-                      );
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
+import 'dart:math';
+import '../config/config.dart';
+import '../widgets/max_width_section.dart';
+import '../main.dart'; // Access global 'supabase' client
 
 // --- TRIP DETAILS SCREEN (Supabase Integration) ---
 class TripDetailsScreen extends StatefulWidget {
@@ -101,8 +37,6 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     final seatLetter = letters[random.nextInt(letters.length)];
     return '$row$seatLetter';
   }
-
-  
 
   Future<void> _handleBooking() async {
     // 1. Check Login Status
@@ -247,70 +181,6 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
           ],
         ),
       ),
-    );
-  }
-}
-
-// --- PROFILE SCREEN ---
-class ProfileScreen extends StatelessWidget {
-  final Function(AppPage, {Map<String, dynamic>? trip}) navigateTo;
-  final VoidCallback onLogout;
-  final Map<String, String> initialUserData;
-  final bool isLoggedIn;
-  final Function(BuildContext context) showAuthModal;
-  final VoidCallback onThemeToggle;
-
-  const ProfileScreen({
-    super.key,
-    required this.navigateTo,
-    required this.onLogout,
-    required this.initialUserData,
-    required this.isLoggedIn,
-    required this.showAuthModal,
-    required this.onThemeToggle,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        CustomAppBar(
-          navigateTo: (page) => navigateTo(page),
-          currentPage: AppPage.profile,
-          isLoggedIn: isLoggedIn,
-          onAuthAction: () => showAuthModal(context),
-          onThemeToggle: onThemeToggle,
-        ),
-        Expanded(
-          child: Center(
-            child: MaxWidthSection(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const CircleAvatar(
-                    radius: 60,
-                    backgroundColor: primaryBlue,
-                    child: Icon(Icons.person, size: 60, color: Colors.white),
-                  ),
-                  const SizedBox(height: 20),
-                  Text(initialUserData['name'] ?? 'Explorer', style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
-                  Text(initialUserData['email'] ?? '', style: const TextStyle(fontSize: 16, color: subtitleColor)),
-                  const SizedBox(height: 40),
-                  ElevatedButton.icon(
-                    onPressed: onLogout,
-                    icon: const Icon(Icons.logout, color: Colors.white),
-                    label: const Text('Sign Out', style: TextStyle(color: Colors.white)),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: accentOrange,
-                      padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
-                    ),
-                  )
-                ],
-              ),
-            ),
-          ),
-        )
-      ],
     );
   }
 }

@@ -1,7 +1,9 @@
 // ignore_for_file: deprecated_member_use
 import 'package:flutter/material.dart';
-import 'config.dart';
-import 'widgets_reusable.dart';
+import '../config/config.dart';
+import '../widgets/custom_app_bar.dart';
+import '../widgets/max_width_section.dart';
+import '../widgets/popular_trip_card.dart';
 
 typedef ShowAuthModal = void Function(BuildContext context);
 
@@ -127,7 +129,6 @@ class _PopularTripsSection extends StatelessWidget {
                   width: 300,
                   child: PopularTripCard(
                     trip: trips[index],
-                    // FIX: Direct navigation to details
                     onViewDetails: (trip) => navigateTo(AppPage.tripDetails, trip: trip),
                   ),
                 ),
