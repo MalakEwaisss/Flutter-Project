@@ -1,37 +1,36 @@
+// lib/screens.dart
 import 'package:flutter/material.dart';
-
+import 'dart:math'; // For unique seat number generation
 import 'config.dart';
 import 'widgets_reusable.dart';
+import 'main.dart'; // Access global 'supabase' client
 
-// -----------------------------------------------------------------
-// --- 2. TRIP LIST SCREEN ---
-// -----------------------------------------------------------------
-
+// --- TRIP LIST SCREEN ---
 class TripsScreen extends StatelessWidget {
-  final Function(AppPage) navigateTo;
+  final Function(AppPage, {Map<String, dynamic>? trip}) navigateTo;
   final bool isLoggedIn;
   final Function(BuildContext context) showAuthModal;
+  final VoidCallback onThemeToggle;
 
   const TripsScreen({
     super.key,
     required this.navigateTo,
     required this.isLoggedIn,
     required this.showAuthModal,
+    required this.onThemeToggle,
   });
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // App Bar
         CustomAppBar(
-          navigateTo: navigateTo,
+          navigateTo: (page) => navigateTo(page),
           currentPage: AppPage.trips,
           isLoggedIn: isLoggedIn,
           onAuthAction: () => showAuthModal(context),
+          onThemeToggle: onThemeToggle,
         ),
-
-        // Main Content Area
         Expanded(
           child: SingleChildScrollView(
             child: MaxWidthSection(
@@ -39,41 +38,27 @@ class TripsScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Recommended Trips (7 Results)',
-                    style: TextStyle(
-                      fontSize: 32,
-                      fontWeight: FontWeight.bold,
-                      color: primaryBlue,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Showing results based on your search filter: Asia, 2 Travelers.',
-                    style: TextStyle(fontSize: 18, color: subtitleColor),
+                    'Recommended Trips',
+                    style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 30),
-
-                  // Responsive Trip Grid
                   GridView.builder(
-                    physics:
-                        const NeverScrollableScrollPhysics(), // Handled by outer SingleChildScrollView
+                    physics: const NeverScrollableScrollPhysics(),
                     shrinkWrap: true,
                     itemCount: allTrips.length,
-                    gridDelegate:
-                        const SliverGridDelegateWithMaxCrossAxisExtent(
-                          maxCrossAxisExtent: 350, // Max width of each item
-                          childAspectRatio: 0.7, // Aspect ratio (taller card)
-                          crossAxisSpacing: 24,
-                          mainAxisSpacing: 32,
-                        ),
+                    gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                      maxCrossAxisExtent: 400,
+                      childAspectRatio: 0.85,
+                      crossAxisSpacing: 20,
+                      mainAxisSpacing: 20,
+                    ),
                     itemBuilder: (context, index) {
-                      return PopularTripCard(
+                      return TripCard(
                         trip: allTrips[index],
-                        navigateTo: navigateTo,
+                        onViewDetails: (trip) => navigateTo(AppPage.tripDetails, trip: trip),
                       );
                     },
                   ),
-                  const SizedBox(height: 50),
                 ],
               ),
             ),
@@ -84,16 +69,196 @@ class TripsScreen extends StatelessWidget {
   }
 }
 
-// -----------------------------------------------------------------
-// --- 3. PROFILE / EDIT PROFILE UI ---
-// -----------------------------------------------------------------
+// --- TRIP DETAILS SCREEN (Supabase Integration) ---
+class TripDetailsScreen extends StatefulWidget {
+  final Map<String, dynamic> trip;
+  final Function(AppPage, {Map<String, dynamic>? trip}) navigateTo;
 
-class ProfileScreen extends StatefulWidget {
-  final Function(AppPage) navigateTo;
+  const TripDetailsScreen({super.key, required this.trip, required this.navigateTo});
+
+  @override
+  State<TripDetailsScreen> createState() => _TripDetailsScreenState();
+}
+
+class _TripDetailsScreenState extends State<TripDetailsScreen> {
+  DateTime? _selectedDate;
+  String? _selectedClass;
+  bool _isLoading = false;
+
+  final List<String> _seatCategories = ['Economy', 'Economy Plus', 'Business Class', 'First Class'];
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedClass = widget.trip['class'] ?? 'Economy';
+  }
+
+  // Helper to generate a unique seat number (e.g., 24B)
+  String _generateUniqueSeat() {
+    final random = Random();
+    final row = random.nextInt(40) + 1; // Rows 1-40
+    final letters = ['A', 'B', 'C', 'D', 'E', 'F'];
+    final seatLetter = letters[random.nextInt(letters.length)];
+    return '$row$seatLetter';
+  }
+
+  
+
+  Future<void> _handleBooking() async {
+    // 1. Check Login Status
+    final user = supabase.auth.currentUser;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please sign in to book this trip'), backgroundColor: Colors.red),
+      );
+      return;
+    }
+
+    // 2. Validate Date
+    if (_selectedDate == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a travel date')),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      final String seatNum = _generateUniqueSeat();
+
+      // 3. Insert into Supabase 'bookings' table
+      await supabase.from('bookings').insert({
+        'user_id': user.id,
+        'trip_name': widget.trip['title'],
+        'travel_date': _selectedDate!.toIso8601String(),
+        'seat_category': _selectedClass,
+        'seat_number': seatNum,
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Success! Seat $seatNum reserved for ${widget.trip['title']}'),
+            backgroundColor: successGreen,
+          ),
+        );
+        widget.navigateTo(AppPage.trips);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: ${e.toString()}'), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _selectDate(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now().add(const Duration(days: 7)),
+      firstDate: DateTime.now(),
+      lastDate: DateTime(2026),
+    );
+    if (picked != null) setState(() => _selectedDate = picked);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(widget.trip['title']),
+        backgroundColor: primaryBlue,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => widget.navigateTo(AppPage.trips),
+        ),
+      ),
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            Image.network(widget.trip['image'], width: double.infinity, height: 350, fit: BoxFit.cover),
+            MaxWidthSection(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(widget.trip['title'], style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
+                          Text(widget.trip['location'], style: const TextStyle(fontSize: 20, color: subtitleColor)),
+                        ],
+                      ),
+                      Text('\$${widget.trip['price']}', style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: primaryBlue)),
+                    ],
+                  ),
+                  const SizedBox(height: 30),
+                  const Text('About this trip', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 10),
+                  Text(widget.trip['description'] ?? 'Explore this amazing destination.', style: const TextStyle(fontSize: 16, height: 1.6)),
+                  const SizedBox(height: 30),
+                  const Text('Booking Preferences', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                  const Divider(),
+                  
+                  ListTile(
+                    leading: const Icon(Icons.calendar_today, color: primaryBlue),
+                    title: const Text('Travel Date'),
+                    subtitle: Text(_selectedDate == null ? 'Tap to choose date' : '${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}'),
+                    onTap: () => _selectDate(context),
+                  ),
+
+                  ListTile(
+                    leading: const Icon(Icons.airline_seat_recline_extra, color: primaryBlue),
+                    title: const Text('Seat Category'),
+                    subtitle: DropdownButton<String>(
+                      value: _selectedClass,
+                      isExpanded: true,
+                      onChanged: (val) => setState(() => _selectedClass = val),
+                      items: _seatCategories.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+                    ),
+                  ),
+
+                  const SizedBox(height: 40),
+                  Center(
+                    child: SizedBox(
+                      width: 300,
+                      height: 60,
+                      child: ElevatedButton(
+                        onPressed: _isLoading ? null : _handleBooking,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: accentOrange,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                        ),
+                        child: _isLoading 
+                          ? const CircularProgressIndicator(color: Colors.white) 
+                          : const Text('Confirm & Book Now', style: TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold)),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// --- PROFILE SCREEN ---
+class ProfileScreen extends StatelessWidget {
+  final Function(AppPage, {Map<String, dynamic>? trip}) navigateTo;
   final VoidCallback onLogout;
   final Map<String, String> initialUserData;
   final bool isLoggedIn;
-  final Function(BuildContext context) showAuthModal; // For the App Bar
+  final Function(BuildContext context) showAuthModal;
+  final VoidCallback onThemeToggle;
 
   const ProfileScreen({
     super.key,
@@ -102,386 +267,49 @@ class ProfileScreen extends StatefulWidget {
     required this.initialUserData,
     required this.isLoggedIn,
     required this.showAuthModal,
+    required this.onThemeToggle,
   });
-
-  @override
-  State<ProfileScreen> createState() => _ProfileScreenState();
-}
-
-class _ProfileScreenState extends State<ProfileScreen> {
-  bool _isEditing = false;
-
-  late TextEditingController _nameController;
-  late TextEditingController _emailController;
-  late TextEditingController _phoneController;
-  late TextEditingController _bioController;
-  late TextEditingController _locationController;
-
-  @override
-  void initState() {
-    super.initState();
-    // Initialize controllers using the data passed from the AppState
-    _nameController = TextEditingController(
-      text: widget.initialUserData['name'] ?? 'Guest User',
-    );
-    _emailController = TextEditingController(
-      text: widget.initialUserData['email'] ?? 'N/A',
-    );
-    _phoneController = TextEditingController(
-      text: widget.initialUserData['phone'] ?? '+1 555 123 4567',
-    );
-    _bioController = TextEditingController(
-      text:
-          widget.initialUserData['bio'] ?? 'Tell us about your next adventure!',
-    );
-    _locationController = TextEditingController(
-      text: widget.initialUserData['location'] ?? 'Global',
-    );
-  }
-
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _emailController.dispose();
-    _phoneController.dispose();
-    _bioController.dispose();
-    _locationController.dispose();
-    super.dispose();
-  }
-
-  void _saveProfile() {
-    setState(() {
-      _isEditing = false;
-    });
-    // NOTE: In a real app, this would update the user data in the AppState/Database
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'Profile saved successfully! Welcome, ${_nameController.text}.',
-        ),
-        backgroundColor: successGreen,
-        duration: const Duration(seconds: 2),
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // App Bar
         CustomAppBar(
-          navigateTo: widget.navigateTo,
+          navigateTo: (page) => navigateTo(page),
           currentPage: AppPage.profile,
-          isLoggedIn: widget.isLoggedIn, // Must be true here
-          onAuthAction: () => widget.showAuthModal(context), // Pass auth action
+          isLoggedIn: isLoggedIn,
+          onAuthAction: () => showAuthModal(context),
+          onThemeToggle: onThemeToggle,
         ),
-
-        // Main Content Area
         Expanded(
-          child: SingleChildScrollView(
+          child: Center(
             child: MaxWidthSection(
-              verticalPadding: 30,
-              child: Card(
-                elevation: 10,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(25),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(40.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      // Header and Toggle Button
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            _isEditing ? 'Edit Profile' : 'User Profile',
-                            style: const TextStyle(
-                              fontSize: 32,
-                              fontWeight: FontWeight.bold,
-                              color: primaryBlue,
-                            ),
-                          ),
-
-                          // Edit/Save Button and Logout Button
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              // Edit/Save Button
-                              ElevatedButton.icon(
-                                onPressed: () {
-                                  if (_isEditing) {
-                                    _saveProfile();
-                                  } else {
-                                    setState(() => _isEditing = true);
-                                  }
-                                },
-                                icon: Icon(
-                                  _isEditing ? Icons.save : Icons.edit,
-                                  color: Colors.white,
-                                ),
-                                label: Text(
-                                  _isEditing ? 'Save Changes' : 'Edit Profile',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: _isEditing
-                                      ? successGreen
-                                      : accentOrange,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 20,
-                                    vertical: 15,
-                                  ),
-                                ),
-                              ),
-
-                              // Logout Button (Only visible when viewing, not editing)
-                              if (!_isEditing)
-                                Padding(
-                                  padding: const EdgeInsets.only(left: 10.0),
-                                  child: TextButton.icon(
-                                    onPressed: () {
-                                      widget
-                                          .onLogout(); // Call the logout action
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        const SnackBar(
-                                          content: Text(
-                                            'You have been logged out.',
-                                          ),
-                                          backgroundColor: primaryBlue,
-                                          duration: Duration(seconds: 2),
-                                        ),
-                                      );
-                                    },
-                                    icon: const Icon(
-                                      Icons.logout,
-                                      color: Colors.red,
-                                    ),
-                                    label: const Text(
-                                      'Logout',
-                                      style: TextStyle(
-                                        color: Colors.red,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ],
-                      ),
-                      const Divider(height: 40, color: lightBackground),
-
-                      // Profile Avatar
-                      Stack(
-                        children: [
-                          const CircleAvatar(
-                            radius: 70,
-                            backgroundColor: lightBackground,
-                            backgroundImage: NetworkImage(
-                              'https://i.pravatar.cc/300?img=50',
-                            ),
-                            child: Icon(
-                              Icons.person,
-                              size: 80,
-                              color: subtitleColor,
-                            ),
-                          ),
-                          if (_isEditing)
-                            Positioned(
-                              bottom: 0,
-                              right: 0,
-                              child: CircleAvatar(
-                                backgroundColor: primaryBlue,
-                                radius: 20,
-                                child: IconButton(
-                                  icon: const Icon(
-                                    Icons.camera_alt,
-                                    size: 20,
-                                    color: Colors.white,
-                                  ),
-                                  onPressed: () {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text(
-                                          'Photo upload simulated!',
-                                        ),
-                                        backgroundColor: primaryBlue,
-                                        duration: Duration(seconds: 1),
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                      const SizedBox(height: 30),
-
-                      // Profile Fields Grid
-                      GridView.count(
-                        crossAxisCount: 2,
-                        shrinkWrap: true,
-                        childAspectRatio: 3.5,
-                        crossAxisSpacing: 30,
-                        mainAxisSpacing: 25,
-                        physics: const NeverScrollableScrollPhysics(),
-                        children: [
-                          // Name
-                          _ProfileField(
-                            controller: _nameController,
-                            label: 'Full Name',
-                            icon: Icons.badge,
-                            isEditing: _isEditing,
-                          ),
-                          // Email
-                          _ProfileField(
-                            controller: _emailController,
-                            label: 'Email Address',
-                            icon: Icons.email,
-                            isEditing: _isEditing,
-                            keyboardType: TextInputType.emailAddress,
-                          ),
-                          // Phone
-                          _ProfileField(
-                            controller: _phoneController,
-                            label: 'Phone Number',
-                            icon: Icons.phone,
-                            isEditing: _isEditing,
-                            keyboardType: TextInputType.phone,
-                          ),
-                          // Location
-                          _ProfileField(
-                            controller: _locationController,
-                            label: 'Location',
-                            icon: Icons.location_on,
-                            isEditing: _isEditing,
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 25),
-
-                      // Bio Field (Full Width)
-                      _ProfileField(
-                        controller: _bioController,
-                        label: 'Bio / About Me',
-                        icon: Icons.notes,
-                        isEditing: _isEditing,
-                        maxLines: 3,
-                      ),
-                      const SizedBox(height: 20),
-
-                      // Danger Zone (Only visible when viewing, simulating settings/password change)
-                      if (!_isEditing) ...[
-                        const Divider(height: 40, color: lightBackground),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text(
-                              'Account Settings',
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                color: primaryBlue,
-                              ),
-                            ),
-                            TextButton(
-                              onPressed: () {},
-                              child: const Text(
-                                'Change Password',
-                                style: TextStyle(color: accentOrange),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ],
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const CircleAvatar(
+                    radius: 60,
+                    backgroundColor: primaryBlue,
+                    child: Icon(Icons.person, size: 60, color: Colors.white),
                   ),
-                ),
+                  const SizedBox(height: 20),
+                  Text(initialUserData['name'] ?? 'Explorer', style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
+                  Text(initialUserData['email'] ?? '', style: const TextStyle(fontSize: 16, color: subtitleColor)),
+                  const SizedBox(height: 40),
+                  ElevatedButton.icon(
+                    onPressed: onLogout,
+                    icon: const Icon(Icons.logout, color: Colors.white),
+                    label: const Text('Sign Out', style: TextStyle(color: Colors.white)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: accentOrange,
+                      padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
+                    ),
+                  )
+                ],
               ),
             ),
           ),
-        ),
-      ],
-    );
-  }
-}
-
-// Reusable Profile Input/Display Field
-class _ProfileField extends StatelessWidget {
-  final TextEditingController controller;
-  final String label;
-  final IconData icon;
-  final bool isEditing;
-  final TextInputType keyboardType;
-  final int maxLines;
-
-  const _ProfileField({
-    required this.controller,
-    required this.label,
-    required this.icon,
-    required this.isEditing,
-    this.keyboardType = TextInputType.text,
-    this.maxLines = 1,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: subtitleColor,
-          ),
-        ),
-        const SizedBox(height: 8),
-        TextFormField(
-          controller: controller,
-          readOnly: !isEditing,
-          maxLines: maxLines,
-          keyboardType: keyboardType,
-          style: const TextStyle(
-            color: primaryBlue,
-            fontWeight: FontWeight.bold,
-          ),
-          decoration: InputDecoration(
-            prefixIcon: Icon(icon, color: subtitleColor, size: 20),
-            filled: true, // Always filled for a clean look
-            fillColor: isEditing
-                ? lightBackground.withOpacity(0.5)
-                : lightBackground,
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide.none,
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: primaryBlue, width: 2),
-            ),
-            disabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide.none,
-            ),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 12,
-            ),
-          ),
-        ),
+        )
       ],
     );
   }

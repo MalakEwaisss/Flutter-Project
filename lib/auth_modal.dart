@@ -1,10 +1,10 @@
+// auth_modal.dart
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'main.dart'; // To access the global supabase client
+import 'config.dart';
 
-import 'config.dart'; // For colors and AppPage
-
-// --- AUTH MODAL WIDGET ---
 class AuthModal extends StatefulWidget {
-  // Signature changed to accept profile data map
   final Function(Map<String, String>) onLoginSuccess;
   const AuthModal({super.key, required this.onLoginSuccess});
 
@@ -14,169 +14,136 @@ class AuthModal extends StatefulWidget {
 
 class _AuthModalState extends State<AuthModal> {
   bool _isLoginMode = true;
-  // Initialize with sample data for quick testing/login mode
-  final TextEditingController _emailController = TextEditingController(
-    text: 'test@user.com',
-  );
-  final TextEditingController _passwordController = TextEditingController(
-    text: 'password123',
-  );
-  final TextEditingController _nameController = TextEditingController(
-    text: 'New Explorer',
-  );
+  bool _isLoading = false;
 
-  void _handleSubmit(BuildContext context) {
-    // Basic validation check (simulated)
-    if (_emailController.text.isEmpty ||
-        _passwordController.text.isEmpty ||
-        (!_isLoginMode && _nameController.text.isEmpty)) {
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _nameController = TextEditingController();
+
+  Future<void> _handleSubmit(BuildContext context) async {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
+    final name = _nameController.text.trim();
+
+    if (email.isEmpty || password.isEmpty || (!_isLoginMode && name.isEmpty)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please fill out all required fields.'),
-          backgroundColor: accentOrange,
-          duration: Duration(seconds: 2),
-        ),
+        const SnackBar(content: Text('Please fill all fields')),
       );
       return;
     }
 
-    // --- Prepare User Data to Pass Back ---
-    final String userName = _isLoginMode
-        ? 'Returning Traveler' // Default name for simple login
-        : _nameController.text.trim();
+    setState(() => _isLoading = true);
 
-    final userData = {
-      'name': userName,
-      'email': _emailController.text.trim(),
-      // Stubbed defaults for new accounts
-      'phone': '+1 555 123 4567',
-      'bio': 'Tell us about your next adventure!',
-      'location': 'Global',
-    };
+    try {
+      if (_isLoginMode) {
+        // LOGIN LOGIC
+        final AuthResponse res = await supabase.auth.signInWithPassword(
+          email: email,
+          password: password,
+        );
+        
+        if (res.user != null) {
+          widget.onLoginSuccess({
+            'name': res.user!.userMetadata?['full_name'] ?? 'Traveler',
+            'email': res.user!.email!,
+          });
+          Navigator.pop(context);
+        }
+      } else {
+        // SIGN UP LOGIC (Fixing the AuthApiException)
+        final AuthResponse res = await supabase.auth.signUp(
+          email: email,
+          password: password,
+          data: {'full_name': name}, // Store name in metadata
+        );
 
-    // Simulate API call success
-    Navigator.of(context).pop(); // Close modal
-    widget.onLoginSuccess(userData); // Pass the new user data
-
-    // Show success message
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          _isLoginMode
-              ? 'Welcome back! Logged in as ${userData['email']}'
-              : 'Account created successfully! Welcome, $userName',
+        if (res.user != null) {
+          // If session is null, it means Email Confirmation is ON in Supabase
+          if (res.session == null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Check your email for a confirmation link!'),
+                backgroundColor: Colors.orange,
+              ),
+            );
+          } else {
+            widget.onLoginSuccess({
+              'name': name,
+              'email': email,
+            });
+          }
+          Navigator.pop(context);
+        }
+      }
+    } on AuthException catch (error) {
+      // This catches the AuthApiException and displays the actual reason
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error.message), 
+          backgroundColor: Colors.red,
         ),
-        backgroundColor: successGreen,
-        duration: const Duration(seconds: 2),
-      ),
-    );
+      );
+    } catch (error) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('An unexpected error occurred')),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
+    return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      titlePadding: EdgeInsets.zero,
-      contentPadding: const EdgeInsets.all(30),
-      title: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: const BoxDecoration(
-          color: primaryBlue,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        child: Text(
-          _isLoginMode ? 'Sign In to TravelHub' : 'Create Your Account',
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            fontSize: 24,
-          ),
-        ),
-      ),
-      content: SingleChildScrollView(
-        child: SizedBox(
-          width: 400, // Fixed width for desktop modal
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Name Field (Only for Sign Up)
-              if (!_isLoginMode) ...[
-                TextFormField(
-                  controller: _nameController,
-                  decoration: InputDecoration(
-                    labelText: 'Full Name',
-                    prefixIcon: Icon(Icons.person, color: primaryBlue),
-                  ),
-                ),
-                const SizedBox(height: 20),
-              ],
-
-              // Email
-              TextFormField(
-                controller: _emailController,
-                keyboardType: TextInputType.emailAddress,
-                decoration: InputDecoration(
-                  labelText: 'Email Address',
-                  prefixIcon: Icon(Icons.email, color: primaryBlue),
-                ),
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              _isLoginMode ? 'Welcome Back' : 'Join TravelHub',
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: primaryBlue),
+            ),
+            const SizedBox(height: 20),
+            if (!_isLoginMode)
+              TextField(
+                controller: _nameController,
+                decoration: const InputDecoration(hintText: 'Full Name', prefixIcon: Icon(Icons.person)),
               ),
-              const SizedBox(height: 20),
-
-              // Password
-              TextFormField(
-                controller: _passwordController,
-                obscureText: true,
-                decoration: InputDecoration(
-                  labelText: 'Password',
-                  prefixIcon: Icon(Icons.lock, color: primaryBlue),
+            const SizedBox(height: 15),
+            TextField(
+              controller: _emailController,
+              decoration: const InputDecoration(hintText: 'Email', prefixIcon: Icon(Icons.email)),
+            ),
+            const SizedBox(height: 15),
+            TextField(
+              controller: _passwordController,
+              obscureText: true,
+              decoration: const InputDecoration(hintText: 'Password', prefixIcon: Icon(Icons.lock)),
+            ),
+            const SizedBox(height: 25),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _isLoading ? null : () => _handleSubmit(context),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: accentOrange,
+                  padding: const EdgeInsets.symmetric(vertical: 15),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
+                child: _isLoading 
+                    ? const CircularProgressIndicator(color: Colors.white) 
+                    : Text(_isLoginMode ? 'Sign In' : 'Sign Up', 
+                        style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
               ),
-              const SizedBox(height: 30),
-
-              // Submit Button
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () => _handleSubmit(context),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: accentOrange,
-                    padding: const EdgeInsets.symmetric(vertical: 15),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    elevation: 5,
-                  ),
-                  child: Text(
-                    _isLoginMode ? 'Sign In' : 'Sign Up',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-
-              // Switch Mode Text
-              TextButton(
-                onPressed: () {
-                  setState(() {
-                    _isLoginMode = !_isLoginMode;
-                  });
-                },
-                child: Text(
-                  _isLoginMode
-                      ? 'Need an account? Sign Up'
-                      : 'Already have an account? Sign In',
-                  style: const TextStyle(
-                    color: primaryBlue,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
-          ),
+            ),
+            TextButton(
+              onPressed: () => setState(() => _isLoginMode = !_isLoginMode),
+              child: Text(_isLoginMode ? 'Need an account? Sign Up' : 'Already have an account? Sign In',
+                  style: const TextStyle(color: primaryBlue, fontWeight: FontWeight.bold)),
+            ),
+          ],
         ),
       ),
     );

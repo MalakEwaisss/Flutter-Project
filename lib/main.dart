@@ -1,111 +1,117 @@
+// lib/main.dart
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'auth_modal.dart';
-// Import local files
 import 'config.dart';
 import 'home_screen.dart';
 import 'screens.dart';
 
-// --- 0. CUSTOM SCROLL BEHAVIOR FOR SMOOTHNESS ---
-
 class SmoothScrollBehavior extends ScrollBehavior {
   @override
-  Widget buildOverscrollIndicator(
-    BuildContext context,
-    Widget child,
-    ScrollableDetails details,
-  ) {
-    return child;
-  }
-
+  Widget buildOverscrollIndicator(BuildContext context, Widget child, ScrollableDetails details) => child;
   @override
-  ScrollPhysics getScrollPhysics(BuildContext context) {
-    return const BouncingScrollPhysics();
-  }
+  ScrollPhysics getScrollPhysics(BuildContext context) => const BouncingScrollPhysics();
 }
 
-// --- MAIN APPLICATION SETUP (Stateful for Navigation and State) ---
-
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initializing with your provided credentials
+  await Supabase.initialize(
+    url: 'https://jofcdkdoxhkjejgkdrbk.supabase.co',
+    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpvZmNka2RveGhramVqZ2tkcmJrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU5MzY1ODIsImV4cCI6MjA4MTUxMjU4Mn0.z3gUMnRDFNp3zvxaXd1jXyZa-CwINR43KIQOBJa66TQ',
+  );
+  
   runApp(const TravelHubApp());
 }
 
+// Global Supabase client for easy access across the app
+final supabase = Supabase.instance.client;
+
 class TravelHubApp extends StatefulWidget {
   const TravelHubApp({super.key});
-
   @override
   State<TravelHubApp> createState() => _TravelHubAppState();
 }
 
 class _TravelHubAppState extends State<TravelHubApp> {
   AppPage _currentPage = AppPage.home;
-  // State for login status
   bool _isLoggedIn = false;
-  // NEW: State for current user data (stores name, email, etc.)
   Map<String, String> _currentUser = {};
+  Map<String, dynamic>? _selectedTrip; // Stores data for the Details page
+  ThemeMode _themeMode = ThemeMode.light;
 
-  // NEW: Function to handle login/signup success and store profile data
+  void _toggleTheme() {
+    setState(() {
+      _themeMode = _themeMode == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
+    });
+  }
+
   void _handleLogin(Map<String, String> userData) {
     setState(() {
       _isLoggedIn = true;
       _currentUser = userData;
-      _currentPage = AppPage.profile; // Navigate to profile after login/signup
+      _currentPage = AppPage.profile;
     });
   }
 
-  // Updated: Function to handle logout
-  void _handleLogout() {
+  void _handleLogout() async {
+    await supabase.auth.signOut();
     setState(() {
       _isLoggedIn = false;
       _currentUser = {};
-      _currentPage = AppPage.home; // Navigate to home on logout
+      _currentPage = AppPage.home;
     });
   }
 
-  // Navigation function to change the current screen
-  void _navigateTo(AppPage page) {
+  void _navigateTo(AppPage page, {Map<String, dynamic>? trip}) {
     setState(() {
-      // Only allow navigating to profile if logged in
-      if (page == AppPage.profile && !_isLoggedIn) {
-        _showAuthModal(context);
-      } else {
-        _currentPage = page;
-      }
+      _currentPage = page;
+      if (trip != null) _selectedTrip = trip;
     });
   }
 
-  // Function to show Auth Modal - Made public to be passed to child widgets
   void _showAuthModal(BuildContext context) {
     showDialog(
-      context: context,
-      // Pass the new _handleLogin function
-      builder: (context) => AuthModal(onLoginSuccess: _handleLogin),
+      context: context, 
+      builder: (context) => AuthModal(onLoginSuccess: _handleLogin)
     );
   }
 
-  // Helper to return the correct screen widget
   Widget _getPage() {
     switch (_currentPage) {
       case AppPage.home:
         return TravelHubHomeScreen(
-          navigateTo: _navigateTo,
-          isLoggedIn: _isLoggedIn,
-          showAuthModal: _showAuthModal,
+          navigateTo: _navigateTo, 
+          isLoggedIn: _isLoggedIn, 
+          showAuthModal: _showAuthModal, 
+          onThemeToggle: _toggleTheme
         );
       case AppPage.trips:
         return TripsScreen(
-          navigateTo: _navigateTo,
-          isLoggedIn: _isLoggedIn,
-          showAuthModal: _showAuthModal,
+          navigateTo: _navigateTo, 
+          isLoggedIn: _isLoggedIn, 
+          showAuthModal: _showAuthModal, 
+          onThemeToggle: _toggleTheme
         );
       case AppPage.profile:
-        // Pass current user data and logout function
         return ProfileScreen(
-          navigateTo: _navigateTo,
-          onLogout: _handleLogout,
-          initialUserData: _currentUser,
-          isLoggedIn: _isLoggedIn,
-          showAuthModal: _showAuthModal,
+          navigateTo: _navigateTo, 
+          onLogout: _handleLogout, 
+          initialUserData: _currentUser, 
+          isLoggedIn: _isLoggedIn, 
+          showAuthModal: _showAuthModal, 
+          onThemeToggle: _toggleTheme
+        );
+      case AppPage.tripDetails:
+        // Ensure we have trip data before loading the details screen
+        if (_selectedTrip == null) {
+          return const Center(child: Text("No trip selected. Return to Home."));
+        }
+        return TripDetailsScreen(
+          trip: _selectedTrip!, 
+          navigateTo: _navigateTo
         );
     }
   }
@@ -113,43 +119,22 @@ class _TravelHubAppState extends State<TravelHubApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'TravelHub',
       debugShowCheckedModeBanner: false,
       scrollBehavior: SmoothScrollBehavior(),
+      themeMode: _themeMode,
       theme: ThemeData(
-        fontFamily: 'Inter',
-        primaryColor: primaryBlue,
-        colorScheme: const ColorScheme.light(
-          primary: primaryBlue,
-          secondary: accentOrange,
-        ),
+        brightness: Brightness.light, 
+        primaryColor: primaryBlue, 
         scaffoldBackgroundColor: lightBackground,
-        appBarTheme: const AppBarTheme(
-          backgroundColor: cardColor,
-          elevation: 0,
-          iconTheme: IconThemeData(color: primaryBlue),
-          titleTextStyle: TextStyle(
-            color: primaryBlue,
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        inputDecorationTheme: InputDecorationTheme(
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: BorderSide.none,
-          ),
-          filled: true,
-          fillColor: lightBackground.withOpacity(0.5),
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 12,
-          ),
-        ),
+        cardColor: Colors.white,
       ),
-      home: Scaffold(
-        body: _getPage(), // Display the current screen
+      darkTheme: ThemeData(
+        brightness: Brightness.dark, 
+        primaryColor: accentOrange, 
+        scaffoldBackgroundColor: const Color(0xFF121212),
+        cardColor: const Color(0xFF1E1E1E),
       ),
+      home: Scaffold(body: _getPage()),
     );
   }
 }
