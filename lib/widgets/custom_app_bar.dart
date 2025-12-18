@@ -38,6 +38,14 @@ class CustomAppBar extends StatelessWidget {
             onPressed: () => navigateTo(AppPage.trips),
             child: Text('My Trips', style: TextStyle(color: currentPage == AppPage.trips ? accentOrange : primaryBlue)),
           ),
+          TextButton(
+            onPressed: () => navigateTo(AppPage.map),
+            child: Text('Map', style: TextStyle(color: currentPage == AppPage.map ? accentOrange : primaryBlue)),
+          ),
+          TextButton(
+            onPressed: () => navigateTo(AppPage.savedLocations),
+            child: Text('Saved', style: TextStyle(color: currentPage == AppPage.savedLocations ? accentOrange : primaryBlue)),
+          ),
           const SizedBox(width: 10),
           IconButton(
             icon: Icon(Theme.of(context).brightness == Brightness.dark ? Icons.light_mode : Icons.dark_mode),
