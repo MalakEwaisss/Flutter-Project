@@ -28,10 +28,10 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
   bool _isFavorited = false;
   bool _isCheckingFavorite = true;
 
-
   @override
   void initState() {
     super.initState();
+    _selectedClass = widget.trip['class'] ?? 'Economy';
     _checkFavoriteStatus();
   }
 
@@ -124,6 +124,16 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
         ),
       );
     }
+  }
+
+  Future<void> _selectDate(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now().add(const Duration(days: 7)),
+      firstDate: DateTime.now(),
+      lastDate: DateTime(2026),
+    );
+    if (picked != null) setState(() => _selectedDate = picked);
   }
 
   void _selectTab(String tab) {
@@ -371,47 +381,6 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 30),
-                  const Text('About this trip', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 10),
-                  Text(widget.trip['description'] ?? 'Explore this amazing destination.', style: const TextStyle(fontSize: 16, height: 1.6)),
-                  
-                  const SizedBox(height: 20),
-                  // View Itinerary Button
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: () {
-                        widget.navigateTo(AppPage.tripLocationView, trip: widget.trip);
-                      },
-                      icon: const Icon(Icons.route, color: primaryBlue),
-                      label: const Text(
-                        'View Full Itinerary & Map',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: primaryBlue,
-                        ),
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        side: const BorderSide(color: primaryBlue, width: 2),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    ),
-                  ),
-                  
-                  const SizedBox(height: 30),
-                  const Text('Booking Preferences', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                  const Divider(),
-                  
-                  ListTile(
-                    leading: const Icon(Icons.calendar_today, color: primaryBlue),
-                    title: const Text('Travel Date'),
-                    subtitle: Text(_selectedDate == null ? 'Tap to choose date' : '${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}'),
-                    onTap: () => _selectDate(context),
                   const SizedBox(height: 8),
                   Row(
                     children: [
@@ -455,7 +424,43 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
             height: 1.6,
           ),
         ),
+        
+        const SizedBox(height: 20),
+        // View Itinerary Button
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: () {
+              widget.navigateTo(AppPage.tripLocationView, trip: widget.trip);
+            },
+            icon: const Icon(Icons.route, color: primaryBlue),
+            label: const Text(
+              'View Full Itinerary & Map',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: primaryBlue,
+              ),
+            ),
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              side: const BorderSide(color: primaryBlue, width: 2),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+        ),
+        
         const SizedBox(height: 30),
+        const Text(
+          'Trip Details',
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 10),
         Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
@@ -478,6 +483,46 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
               _buildDetailRow(Icons.flight, 'Aircraft', widget.trip['aircraft'] ?? 'N/A'),
             ],
           ),
+        ),
+        
+        const SizedBox(height: 30),
+        const Text(
+          'Booking Preferences',
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const Divider(),
+        
+        ListTile(
+          leading: const Icon(Icons.calendar_today, color: primaryBlue),
+          title: const Text('Travel Date'),
+          subtitle: Text(_selectedDate == null 
+              ? 'Tap to choose date' 
+              : '${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}'),
+          onTap: () => _selectDate(context),
+        ),
+
+        ListTile(
+          leading: const Icon(Icons.airline_seat_recline_extra, color: primaryBlue),
+          title: const Text('Seat Category'),
+          subtitle: DropdownButton<String>(
+            value: _selectedClass,
+            isExpanded: true,
+            onChanged: (val) => setState(() => _selectedClass = val),
+            items: _seatCategories.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+          ),
+        ),
+
+        ListTile(
+          leading: const Icon(Icons.place, color: primaryBlue),
+          title: const Text('Meeting Point'),
+          subtitle: Text(_meetingPoint ?? 'Tap to select meeting location'),
+          trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+          onTap: () {
+            widget.navigateTo(AppPage.selectMeetingPoint, trip: widget.trip);
+          },
         ),
       ],
     );
@@ -575,17 +620,6 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                       ],
                     ),
                   ),
-
-                  ListTile(
-                    leading: const Icon(Icons.place, color: primaryBlue),
-                    title: const Text('Meeting Point'),
-                    subtitle: Text(_meetingPoint ?? 'Tap to select meeting location'),
-                    trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                    onTap: () {
-                      widget.navigateTo(AppPage.selectMeetingPoint, trip: widget.trip);
-                    },
-                  ),
-
                   const SizedBox(height: 30),
                   if (_selectedTab == 'overview')
                     _buildOverviewContent()
