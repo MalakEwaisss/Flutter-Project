@@ -40,11 +40,13 @@ WHY WE DID THIS:
 - Required for Weather Widget to fetch weather data from API
 - This is the http package mentioned in Lecture 5
 - Without it, we can't make HTTP requests to external APIs
+- Added `flutter_dotenv` to secure the Weather API key
 
 HOW IT WORKS:
 - pubspec.yaml is like a shopping list of packages we need
-- When you run "flutter pub get", Flutter downloads and installs the http package
-- Then we can use "import 'package:http/http.dart' as http;" in our code
+- `flutter_dotenv` loads variables from a `.env` file
+- Keeps secrets (Weather API Key) out of the code verification
+- When you run "flutter pub get", Flutter downloads dependencies
 
 
 ================================================================================
