@@ -20,6 +20,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
   DateTime? _selectedDate;
   String? _selectedClass;
   bool _isLoading = false;
+  String? _meetingPoint;
 
   final List<String> _seatCategories = ['Economy', 'Economy Plus', 'Business Class', 'First Class'];
 
@@ -136,6 +137,34 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                   const Text('About this trip', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 10),
                   Text(widget.trip['description'] ?? 'Explore this amazing destination.', style: const TextStyle(fontSize: 16, height: 1.6)),
+                  
+                  const SizedBox(height: 20),
+                  // View Itinerary Button
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        widget.navigateTo(AppPage.tripLocationView, trip: widget.trip);
+                      },
+                      icon: const Icon(Icons.route, color: primaryBlue),
+                      label: const Text(
+                        'View Full Itinerary & Map',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: primaryBlue,
+                        ),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        side: const BorderSide(color: primaryBlue, width: 2),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ),
+                  
                   const SizedBox(height: 30),
                   const Text('Booking Preferences', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
                   const Divider(),
@@ -156,6 +185,16 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                       onChanged: (val) => setState(() => _selectedClass = val),
                       items: _seatCategories.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
                     ),
+                  ),
+
+                  ListTile(
+                    leading: const Icon(Icons.place, color: primaryBlue),
+                    title: const Text('Meeting Point'),
+                    subtitle: Text(_meetingPoint ?? 'Tap to select meeting location'),
+                    trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                    onTap: () {
+                      widget.navigateTo(AppPage.selectMeetingPoint, trip: widget.trip);
+                    },
                   ),
 
                   const SizedBox(height: 40),
