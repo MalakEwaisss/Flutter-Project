@@ -90,7 +90,7 @@ class _HeroSection extends StatelessWidget {
                         style: TextStyle(fontSize: isMobile ? 36 : 64, fontWeight: FontWeight.w900, color: Theme.of(context).brightness == Brightness.light ? primaryBlue : Colors.white)),
                     const SizedBox(height: 32),
                     ElevatedButton(
-                      onPressed: () => navigateTo(AppPage.trips),
+                      onPressed: () => navigateTo(AppPage.explore),
                       style: ElevatedButton.styleFrom(backgroundColor: accentOrange, padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 20), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30))),
                       child: const Text('Start Exploring', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white)),
                     ),

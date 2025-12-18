@@ -36,7 +36,7 @@ class CustomAppBar extends StatelessWidget {
           ),
           TextButton(
             onPressed: () => navigateTo(AppPage.trips),
-            child: Text('Trips', style: TextStyle(color: currentPage == AppPage.trips ? accentOrange : primaryBlue)),
+            child: Text('My Trips', style: TextStyle(color: currentPage == AppPage.trips ? accentOrange : primaryBlue)),
           ),
           const SizedBox(width: 10),
           IconButton(

@@ -21,12 +21,16 @@ class BookingSummaryScreen extends StatefulWidget {
 class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
   final TextEditingController _guestsController = TextEditingController();
   final TextEditingController _specialRequestsController = TextEditingController();
+  final TextEditingController _seatNumberController = TextEditingController();
   bool _isLoading = false;
+  DateTime? _selectedTravelDate;
+  String _selectedSeatCategory = 'Economy';
 
   @override
   void dispose() {
     _guestsController.dispose();
     _specialRequestsController.dispose();
+    _seatNumberController.dispose();
     super.dispose();
   }
 
@@ -63,6 +67,26 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
       return;
     }
 
+    if (_selectedTravelDate == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select a travel date'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    if (_seatNumberController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter a seat number'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
     setState(() => _isLoading = true);
 
     try {
@@ -74,7 +98,11 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
         'trip_name': widget.trip['title'],
         'trip_id': widget.trip['id'],
         'location': widget.trip['location'],
+        'trip_image': widget.trip['image'],
         'number_of_guests': guestsCount,
+        'travel_date': _selectedTravelDate!.toIso8601String().split('T')[0],
+        'seat_category': _selectedSeatCategory,
+        'seat_number': _seatNumberController.text.trim(),
         'special_requests': _specialRequestsController.text.trim(),
         'total_price': totalPrice,
         'booking_date': DateTime.now().toIso8601String(),
@@ -290,6 +318,85 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
                 onChanged: (value) {
                   setState(() {});
                 },
+              ),
+              const SizedBox(height: 20),
+              // Travel Date Picker
+              InkWell(
+                onTap: () async {
+                  final DateTime? picked = await showDatePicker(
+                    context: context,
+                    initialDate: DateTime.now().add(const Duration(days: 7)),
+                    firstDate: DateTime.now(),
+                    lastDate: DateTime.now().add(const Duration(days: 365)),
+                  );
+                  if (picked != null) {
+                    setState(() {
+                      _selectedTravelDate = picked;
+                    });
+                  }
+                },
+                child: InputDecorator(
+                  decoration: InputDecoration(
+                    labelText: 'Travel Date',
+                    prefixIcon: const Icon(Icons.calendar_today),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    filled: true,
+                    fillColor: Theme.of(context).cardColor,
+                  ),
+                  child: Text(
+                    _selectedTravelDate == null
+                        ? 'Select travel date'
+                        : '${_selectedTravelDate!.year}-${_selectedTravelDate!.month.toString().padLeft(2, '0')}-${_selectedTravelDate!.day.toString().padLeft(2, '0')}',
+                    style: TextStyle(
+                      color: _selectedTravelDate == null ? Colors.grey : null,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              // Seat Category Dropdown
+              DropdownButtonFormField<String>(
+                value: _selectedSeatCategory,
+                decoration: InputDecoration(
+                  labelText: 'Seat Category',
+                  prefixIcon: const Icon(Icons.airline_seat_recline_extra),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  filled: true,
+                  fillColor: Theme.of(context).cardColor,
+                ),
+                items: const [
+                  DropdownMenuItem(value: 'Economy', child: Text('Economy')),
+                  DropdownMenuItem(value: 'Economy Plus', child: Text('Economy Plus')),
+                  DropdownMenuItem(value: 'Business Class', child: Text('Business Class')),
+                  DropdownMenuItem(value: 'First Class', child: Text('First Class')),
+                ],
+                onChanged: (String? newValue) {
+                  if (newValue != null) {
+                    setState(() {
+                      _selectedSeatCategory = newValue;
+                    });
+                  }
+                },
+              ),
+              const SizedBox(height: 20),
+              // Seat Number Input
+              TextField(
+                controller: _seatNumberController,
+                textCapitalization: TextCapitalization.characters,
+                decoration: InputDecoration(
+                  labelText: 'Seat Number',
+                  hintText: 'e.g., 19D, 23B, 4C',
+                  prefixIcon: const Icon(Icons.event_seat),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  filled: true,
+                  fillColor: Theme.of(context).cardColor,
+                ),
               ),
               const SizedBox(height: 20),
               TextField(

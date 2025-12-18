@@ -14,7 +14,7 @@ class WeatherWidget extends StatefulWidget {
 }
 
 class _WeatherWidgetState extends State<WeatherWidget> {
-  static const String _apiKey = 'YOUR_API_KEY_HERE';
+  static const String _apiKey = '45885d4ddefca7a38d0595ff0b911f8b';
   static const String _baseUrl = 'https://api.openweathermap.org/data/2.5/weather';
 
   Future<Map<String, dynamic>> fetchWeather() async {

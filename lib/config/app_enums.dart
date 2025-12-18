@@ -1,1 +1,1 @@
-enum AppPage { home, trips, profile, tripDetails, booking }
+enum AppPage { home, trips, profile, tripDetails, booking, explore }

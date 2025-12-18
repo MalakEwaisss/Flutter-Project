@@ -124,6 +124,178 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     });
   }
 
+  bool get _isBookedView => widget.trip['_isBookedView'] == true;
+
+  Future<void> _showBookingDetailsDialog() async {
+    final bookingDate = widget.trip['_bookingDate'] != null 
+        ? DateTime.parse(widget.trip['_bookingDate']).toLocal()
+        : DateTime.now();
+    
+    await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: Row(
+            children: [
+              Icon(Icons.receipt_long, color: primaryBlue),
+              const SizedBox(width: 10),
+              const Text('Booking Details'),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildDialogDetailRow('Trip', widget.trip['title']),
+                const Divider(height: 20),
+                _buildDialogDetailRow('Location', widget.trip['location']),
+                const Divider(height: 20),
+                _buildDialogDetailRow('Number of Guests', widget.trip['_numberOfGuests']?.toString() ?? 'N/A'),
+                const Divider(height: 20),
+                _buildDialogDetailRow('Total Price', '\$${widget.trip['_totalPrice']?.toString() ?? 'N/A'}'),
+                const Divider(height: 20),
+                _buildDialogDetailRow('Booking Date', 
+                    '${bookingDate.year}-${bookingDate.month.toString().padLeft(2, '0')}-${bookingDate.day.toString().padLeft(2, '0')}'),
+                if (widget.trip['_specialRequests'] != null && widget.trip['_specialRequests'].toString().isNotEmpty) ...[
+                  const Divider(height: 20),
+                  const Text(
+                    'Special Requests:',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    widget.trip['_specialRequests'],
+                    style: TextStyle(color: subtitleColor),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Close'),
+            ),
+            ElevatedButton.icon(
+              onPressed: () async {
+                Navigator.of(context).pop();
+                await _cancelBooking();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
+              icon: const Icon(Icons.cancel, size: 18),
+              label: const Text('Cancel Booking'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildDialogDetailRow(String label, String value) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            color: subtitleColor,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _cancelBooking() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: const Text('Cancel Booking?'),
+          content: const Text(
+            'Are you sure you want to cancel this booking? This action cannot be undone.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('No, Keep It'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Yes, Cancel'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed == true) {
+      final bookingId = widget.trip['_bookingId'];
+      
+      if (bookingId == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Error: Booking ID not found'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+      
+      try {
+        await supabase
+            .from('bookings')
+            .delete()
+            .eq('id', bookingId);
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Booking cancelled successfully'),
+              backgroundColor: successGreen,
+            ),
+          );
+          widget.navigateTo(AppPage.trips);
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error: $e'),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 5),
+            ),
+          );
+        }
+      }
+    }
+  }
+
   Widget _buildTabButton(String tabName, String label, IconData icon) {
     final isSelected = _selectedTab == tabName;
     return Expanded(
@@ -368,21 +540,35 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                       height: 60,
                       child: ElevatedButton(
                         onPressed: () {
-                          widget.navigateTo(AppPage.booking, trip: widget.trip);
+                          if (_isBookedView) {
+                            _showBookingDetailsDialog();
+                          } else {
+                            widget.navigateTo(AppPage.booking, trip: widget.trip);
+                          }
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: accentOrange,
+                          backgroundColor: _isBookedView ? primaryBlue : accentOrange,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(30),
                           ),
                         ),
-                        child: const Text(
-                          'Book Now',
-                          style: TextStyle(
-                            fontSize: 18,
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              _isBookedView ? Icons.receipt_long : Icons.book_online,
+                              color: Colors.white,
+                            ),
+                            const SizedBox(width: 10),
+                            Text(
+                              _isBookedView ? 'View Booking Details' : 'Book Now',
+                              style: const TextStyle(
+                                fontSize: 18,
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
