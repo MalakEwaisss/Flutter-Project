@@ -2,6 +2,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../config/config.dart';
 
 class WeatherWidget extends StatefulWidget {
@@ -14,7 +15,8 @@ class WeatherWidget extends StatefulWidget {
 }
 
 class _WeatherWidgetState extends State<WeatherWidget> {
-  static const String _apiKey = '45885d4ddefca7a38d0595ff0b911f8b';
+  // Read from .env file
+  static final String _apiKey = dotenv.env['WEATHER_API_KEY'] ?? '';
   static const String _baseUrl = 'https://api.openweathermap.org/data/2.5/weather';
 
   Future<Map<String, dynamic>> fetchWeather() async {
