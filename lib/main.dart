@@ -1,5 +1,6 @@
 // lib/main.dart
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/screens/SelectMeetingPointScreen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'auth/auth_modal.dart';
@@ -8,6 +9,9 @@ import 'screens/home_screen.dart';
 import 'screens/trips_screen.dart';
 import 'screens/trip_details_screen.dart';
 import 'screens/profile_screen.dart';
+import 'screens/map_overview_screen.dart';
+import 'screens/trip_location_view_screen.dart';
+import 'screens/saved_locations_screen.dart';
 
 class SmoothScrollBehavior extends ScrollBehavior {
   @override
@@ -97,6 +101,13 @@ class _TravelHubAppState extends State<TravelHubApp> {
           showAuthModal: _showAuthModal, 
           onThemeToggle: _toggleTheme
         );
+      case AppPage.map:
+        return MapOverviewScreen(
+          navigateTo: _navigateTo,
+          isLoggedIn: _isLoggedIn,
+          showAuthModal: _showAuthModal,
+          onThemeToggle: _toggleTheme,
+        );
       case AppPage.profile:
         return ProfileScreen(
           navigateTo: _navigateTo, 
@@ -115,6 +126,32 @@ class _TravelHubAppState extends State<TravelHubApp> {
           trip: _selectedTrip!, 
           navigateTo: _navigateTo
         );
+      case AppPage.selectMeetingPoint:
+        if (_selectedTrip == null) {
+          return const Center(child: Text("No trip selected. Return to Home."));
+        }
+        return SelectMeetingPointScreen(
+          trip: _selectedTrip!,
+          navigateTo: _navigateTo,
+        );
+      case AppPage.tripLocationView:
+        if (_selectedTrip == null) {
+          return const Center(child: Text("No trip selected. Return to Home."));
+        }
+        return TripLocationViewScreen(
+          trip: _selectedTrip!,
+          navigateTo: _navigateTo,
+        );
+      case AppPage.savedLocations:
+        return SavedLocationsScreen(
+          navigateTo: _navigateTo,
+          isLoggedIn: _isLoggedIn,
+          showAuthModal: _showAuthModal,
+          onThemeToggle: _toggleTheme,
+        );
+      case AppPage.weather:
+        // TODO: Handle this case.
+        throw UnimplementedError();
     }
   }
 
