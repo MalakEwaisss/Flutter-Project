@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/screens/SelectMeetingPointScreen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'auth/auth_modal.dart';
 import 'config/config.dart';
@@ -25,6 +26,13 @@ class SmoothScrollBehavior extends ScrollBehavior {
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Load environment variables
+  try {
+    await dotenv.load(fileName: ".env");
+  } catch (e) {
+    debugPrint("Error loading .env file: $e");
+  }
   
   // Initializing with your provided credentials
   await Supabase.initialize(
