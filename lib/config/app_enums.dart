@@ -1,1 +1,1 @@
-enum AppPage { home, trips, profile, tripDetails, weather,map, selectMeetingPoint, tripLocationView, savedLocations  }
+enum AppPage { home, trips, profile, tripDetails,map, selectMeetingPoint, tripLocationView, savedLocations,explore,booking  }

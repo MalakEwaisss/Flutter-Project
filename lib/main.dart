@@ -13,6 +13,9 @@ import 'screens/map_overview_screen.dart';
 import 'screens/trip_location_view_screen.dart';
 import 'screens/saved_locations_screen.dart';
 
+import 'screens/booking_summary_screen.dart';
+import 'screens/explore_trips_screen.dart';
+
 class SmoothScrollBehavior extends ScrollBehavior {
   @override
   Widget buildOverscrollIndicator(BuildContext context, Widget child, ScrollableDetails details) => child;
@@ -45,8 +48,9 @@ class _TravelHubAppState extends State<TravelHubApp> {
   AppPage _currentPage = AppPage.home;
   bool _isLoggedIn = false;
   Map<String, String> _currentUser = {};
-  Map<String, dynamic>? _selectedTrip; // Stores data for the Details page
+  Map<String, dynamic>? _selectedTrip;
   ThemeMode _themeMode = ThemeMode.light;
+  int _tripsRefreshKey = 0;
 
   void _toggleTheme() {
     setState(() {
@@ -75,6 +79,10 @@ class _TravelHubAppState extends State<TravelHubApp> {
     setState(() {
       _currentPage = page;
       if (trip != null) _selectedTrip = trip;
+      // Force trips screen to reload when navigating to it
+      if (page == AppPage.trips) {
+        _tripsRefreshKey++;
+      }
     });
   }
 
@@ -96,6 +104,7 @@ class _TravelHubAppState extends State<TravelHubApp> {
         );
       case AppPage.trips:
         return TripsScreen(
+          key: ValueKey(_tripsRefreshKey),
           navigateTo: _navigateTo, 
           isLoggedIn: _isLoggedIn, 
           showAuthModal: _showAuthModal, 
@@ -144,14 +153,22 @@ class _TravelHubAppState extends State<TravelHubApp> {
         );
       case AppPage.savedLocations:
         return SavedLocationsScreen(
+      case AppPage.booking:
+        if (_selectedTrip == null) {
+          return const Center(child: Text("No trip selected. Return to Home."));
+        }
+        return BookingSummaryScreen(
+          trip: _selectedTrip!,
+          navigateTo: _navigateTo,
+        );
+      case AppPage.explore:
+        return ExploreTripsScreen(
           navigateTo: _navigateTo,
           isLoggedIn: _isLoggedIn,
           showAuthModal: _showAuthModal,
           onThemeToggle: _toggleTheme,
         );
-      case AppPage.weather:
-        // TODO: Handle this case.
-        throw UnimplementedError();
+
     }
   }
 
