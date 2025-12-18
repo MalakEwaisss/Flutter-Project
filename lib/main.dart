@@ -152,7 +152,12 @@ class _TravelHubAppState extends State<TravelHubApp> {
           navigateTo: _navigateTo,
         );
       case AppPage.savedLocations:
-        return SavedLocationsScreen(
+        return SavedLocationsScreen(navigateTo: _navigateTo,
+          isLoggedIn: _isLoggedIn,
+          showAuthModal: _showAuthModal,
+          onThemeToggle: _toggleTheme,
+        );
+    
       case AppPage.booking:
         if (_selectedTrip == null) {
           return const Center(child: Text("No trip selected. Return to Home."));
