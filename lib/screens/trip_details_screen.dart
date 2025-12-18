@@ -1,4 +1,3 @@
-// ignore_for_file: deprecated_member_use
 import 'package:flutter/material.dart';
 import '../config/config.dart';
 import '../widgets/max_width_section.dart';
@@ -17,13 +16,6 @@ class TripDetailsScreen extends StatefulWidget {
 }
 
 class _TripDetailsScreenState extends State<TripDetailsScreen> {
-  DateTime? _selectedDate;
-  String? _selectedClass;
-  bool _isLoading = false;
-  String? _meetingPoint;
-
-  final List<String> _seatCategories = ['Economy', 'Economy Plus', 'Business Class', 'First Class'];
-
   String _selectedTab = 'overview';
   bool _isFavorited = false;
   bool _isCheckingFavorite = true;
@@ -31,7 +23,6 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
   @override
   void initState() {
     super.initState();
-    _selectedClass = widget.trip['class'] ?? 'Economy';
     _checkFavoriteStatus();
   }
 
@@ -124,16 +115,6 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
         ),
       );
     }
-  }
-
-  Future<void> _selectDate(BuildContext context) async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: DateTime.now().add(const Duration(days: 7)),
-      firstDate: DateTime.now(),
-      lastDate: DateTime(2026),
-    );
-    if (picked != null) setState(() => _selectedDate = picked);
   }
 
   void _selectTab(String tab) {
@@ -483,46 +464,6 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
               _buildDetailRow(Icons.flight, 'Aircraft', widget.trip['aircraft'] ?? 'N/A'),
             ],
           ),
-        ),
-        
-        const SizedBox(height: 30),
-        const Text(
-          'Booking Preferences',
-          style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const Divider(),
-        
-        ListTile(
-          leading: const Icon(Icons.calendar_today, color: primaryBlue),
-          title: const Text('Travel Date'),
-          subtitle: Text(_selectedDate == null 
-              ? 'Tap to choose date' 
-              : '${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}'),
-          onTap: () => _selectDate(context),
-        ),
-
-        ListTile(
-          leading: const Icon(Icons.airline_seat_recline_extra, color: primaryBlue),
-          title: const Text('Seat Category'),
-          subtitle: DropdownButton<String>(
-            value: _selectedClass,
-            isExpanded: true,
-            onChanged: (val) => setState(() => _selectedClass = val),
-            items: _seatCategories.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
-          ),
-        ),
-
-        ListTile(
-          leading: const Icon(Icons.place, color: primaryBlue),
-          title: const Text('Meeting Point'),
-          subtitle: Text(_meetingPoint ?? 'Tap to select meeting location'),
-          trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-          onTap: () {
-            widget.navigateTo(AppPage.selectMeetingPoint, trip: widget.trip);
-          },
         ),
       ],
     );
