@@ -85,14 +85,38 @@ class _HeroSection extends StatelessWidget {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text('Discover Your Next Adventure',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: isMobile ? 36 : 64, fontWeight: FontWeight.w900, color: Theme.of(context).brightness == Brightness.light ? primaryBlue : Colors.white)),
+                    Text(
+                      'Discover Your Next Adventure',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: isMobile ? 36 : 64,
+                        fontWeight: FontWeight.w900,
+                        color: Theme.of(context).brightness == Brightness.light
+                            ? primaryBlue
+                            : Colors.white,
+                      ),
+                    ),
                     const SizedBox(height: 32),
                     ElevatedButton(
                       onPressed: () => navigateTo(AppPage.explore),
-                      style: ElevatedButton.styleFrom(backgroundColor: accentOrange, padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 20), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30))),
-                      child: const Text('Start Exploring', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: accentOrange,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 40,
+                          vertical: 20,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                      ),
+                      child: const Text(
+                        'Start Exploring',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                          color: Colors.white,
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -115,7 +139,10 @@ class _PopularTripsSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Popular Trips', style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
+        const Text(
+          'Popular Trips',
+          style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+        ),
         const SizedBox(height: 20),
         SizedBox(
           height: 420,
@@ -129,7 +156,8 @@ class _PopularTripsSection extends StatelessWidget {
                   width: 300,
                   child: PopularTripCard(
                     trip: trips[index],
-                    onViewDetails: (trip) => navigateTo(AppPage.tripDetails, trip: trip),
+                    onViewDetails: (trip) =>
+                        navigateTo(AppPage.tripDetails, trip: trip),
                   ),
                 ),
               );
@@ -150,10 +178,25 @@ class _WhoWeAreSection extends StatelessWidget {
         bool isMobile = constraints.maxWidth < 800;
         return Container(
           padding: const EdgeInsets.all(32),
-          decoration: BoxDecoration(color: Theme.of(context).cardColor, borderRadius: BorderRadius.circular(20)),
+          decoration: BoxDecoration(
+            color: Theme.of(context).cardColor,
+            borderRadius: BorderRadius.circular(20),
+          ),
           child: isMobile
-              ? Column(children: [_buildImage(), const SizedBox(height: 20), _buildContent()])
-              : Row(children: [Expanded(child: _buildImage()), const SizedBox(width: 40), Expanded(child: _buildContent())]),
+              ? Column(
+                  children: [
+                    _buildImage(),
+                    const SizedBox(height: 20),
+                    _buildContent(),
+                  ],
+                )
+              : Row(
+                  children: [
+                    Expanded(child: _buildImage()),
+                    const SizedBox(width: 40),
+                    Expanded(child: _buildContent()),
+                  ],
+                ),
         );
       },
     );
@@ -172,9 +215,19 @@ class _WhoWeAreSection extends StatelessWidget {
   Widget _buildContent() => const Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      Text('Who We Are', style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: accentOrange)),
+      Text(
+        'Who We Are',
+        style: TextStyle(
+          fontSize: 32,
+          fontWeight: FontWeight.bold,
+          color: accentOrange,
+        ),
+      ),
       SizedBox(height: 12),
-      Text('TravelHub connects travelers with expert-curated itineraries and a vibrant community.', style: TextStyle(fontSize: 16, height: 1.5)),
+      Text(
+        'Travio connects travelers with expert-curated itineraries and a vibrant community.',
+        style: TextStyle(fontSize: 16, height: 1.5),
+      ),
     ],
   );
 }
@@ -185,10 +238,15 @@ class _WhyChooseUsSection extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        const Text('Why Choose TravelHub?', style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
+        const Text(
+          'Why Choose Travio?',
+          style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+        ),
         const SizedBox(height: 30),
         Wrap(
-          spacing: 20, runSpacing: 20, alignment: WrapAlignment.center,
+          spacing: 20,
+          runSpacing: 20,
+          alignment: WrapAlignment.center,
           children: const [
             _FeatureCard(icon: Icons.verified_user, title: 'Secure Booking'),
             _FeatureCard(icon: Icons.support_agent, title: '24/7 Support'),
@@ -207,9 +265,19 @@ class _FeatureCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 200, padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(color: Theme.of(context).cardColor, borderRadius: BorderRadius.circular(15)),
-      child: Column(children: [Icon(icon, size: 40, color: accentOrange), const SizedBox(height: 10), Text(title, style: const TextStyle(fontWeight: FontWeight.bold))]),
+      width: 200,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(15),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, size: 40, color: accentOrange),
+          const SizedBox(height: 10),
+          Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+        ],
+      ),
     );
   }
 }
@@ -219,12 +287,33 @@ class AppFooter extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: double.infinity, color: primaryBlue, padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 20),
-      child: Column(children: [
-        Row(mainAxisAlignment: MainAxisAlignment.center, children: const [Icon(Icons.location_on, color: Colors.white), SizedBox(width: 8), Text('TravelHub', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold))]),
-        const SizedBox(height: 20),
-        Text('© 2024 TravelHub. All rights reserved.', style: TextStyle(color: Colors.white.withOpacity(0.7))),
-      ]),
+      width: double.infinity,
+      color: const Color(0xFF1E3A8A),
+      padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 20),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: const [
+              Icon(Icons.location_on, color: Colors.white),
+              SizedBox(width: 8),
+              Text(
+                'Travio',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Text(
+            '© 2024 Travio. All rights reserved.',
+            style: TextStyle(color: Colors.white.withOpacity(0.7)),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -16,30 +16,41 @@ import 'screens/saved_locations_screen.dart';
 
 import 'screens/booking_summary_screen.dart';
 import 'screens/explore_trips_screen.dart';
+import 'screens/splash/splash_screen.dart';
+import 'screens/onboarding/onboarding_screen.dart';
+import 'screens/search/trip_search_screen.dart';
+import 'screens/search/filters_screen.dart';
+import 'screens/search/search_results.dart';
 
 class SmoothScrollBehavior extends ScrollBehavior {
   @override
-  Widget buildOverscrollIndicator(BuildContext context, Widget child, ScrollableDetails details) => child;
+  Widget buildOverscrollIndicator(
+    BuildContext context,
+    Widget child,
+    ScrollableDetails details,
+  ) => child;
   @override
-  ScrollPhysics getScrollPhysics(BuildContext context) => const BouncingScrollPhysics();
+  ScrollPhysics getScrollPhysics(BuildContext context) =>
+      const BouncingScrollPhysics();
 }
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   // Load environment variables
   try {
     await dotenv.load(fileName: ".env");
   } catch (e) {
     debugPrint("Error loading .env file: $e");
   }
-  
+
   // Initializing with your provided credentials
   await Supabase.initialize(
     url: 'https://jofcdkdoxhkjejgkdrbk.supabase.co',
-    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpvZmNka2RveGhramVqZ2tkcmJrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU5MzY1ODIsImV4cCI6MjA4MTUxMjU4Mn0.z3gUMnRDFNp3zvxaXd1jXyZa-CwINR43KIQOBJa66TQ',
+    anonKey:
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpvZmNka2RveGhramVqZ2tkcmJrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU5MzY1ODIsImV4cCI6MjA4MTUxMjU4Mn0.z3gUMnRDFNp3zvxaXd1jXyZa-CwINR43KIQOBJa66TQ',
   );
-  
+
   runApp(const TravelHubApp());
 }
 
@@ -62,7 +73,9 @@ class _TravelHubAppState extends State<TravelHubApp> {
 
   void _toggleTheme() {
     setState(() {
-      _themeMode = _themeMode == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
+      _themeMode = _themeMode == ThemeMode.light
+          ? ThemeMode.dark
+          : ThemeMode.light;
     });
   }
 
@@ -96,8 +109,8 @@ class _TravelHubAppState extends State<TravelHubApp> {
 
   void _showAuthModal(BuildContext context) {
     showDialog(
-      context: context, 
-      builder: (context) => AuthModal(onLoginSuccess: _handleLogin)
+      context: context,
+      builder: (context) => AuthModal(onLoginSuccess: _handleLogin),
     );
   }
 
@@ -105,18 +118,18 @@ class _TravelHubAppState extends State<TravelHubApp> {
     switch (_currentPage) {
       case AppPage.home:
         return TravelHubHomeScreen(
-          navigateTo: _navigateTo, 
-          isLoggedIn: _isLoggedIn, 
-          showAuthModal: _showAuthModal, 
-          onThemeToggle: _toggleTheme
+          navigateTo: _navigateTo,
+          isLoggedIn: _isLoggedIn,
+          showAuthModal: _showAuthModal,
+          onThemeToggle: _toggleTheme,
         );
       case AppPage.trips:
         return TripsScreen(
           key: ValueKey(_tripsRefreshKey),
-          navigateTo: _navigateTo, 
-          isLoggedIn: _isLoggedIn, 
-          showAuthModal: _showAuthModal, 
-          onThemeToggle: _toggleTheme
+          navigateTo: _navigateTo,
+          isLoggedIn: _isLoggedIn,
+          showAuthModal: _showAuthModal,
+          onThemeToggle: _toggleTheme,
         );
       case AppPage.map:
         return MapOverviewScreen(
@@ -127,22 +140,19 @@ class _TravelHubAppState extends State<TravelHubApp> {
         );
       case AppPage.profile:
         return ProfileScreen(
-          navigateTo: _navigateTo, 
-          onLogout: _handleLogout, 
-          initialUserData: _currentUser, 
-          isLoggedIn: _isLoggedIn, 
-          showAuthModal: _showAuthModal, 
-          onThemeToggle: _toggleTheme
+          navigateTo: _navigateTo,
+          onLogout: _handleLogout,
+          initialUserData: _currentUser,
+          isLoggedIn: _isLoggedIn,
+          showAuthModal: _showAuthModal,
+          onThemeToggle: _toggleTheme,
         );
       case AppPage.tripDetails:
         // Ensure we have trip data before loading the details screen
         if (_selectedTrip == null) {
           return const Center(child: Text("No trip selected. Return to Home."));
         }
-        return TripDetailsScreen(
-          trip: _selectedTrip!, 
-          navigateTo: _navigateTo
-        );
+        return TripDetailsScreen(trip: _selectedTrip!, navigateTo: _navigateTo);
       case AppPage.selectMeetingPoint:
         if (_selectedTrip == null) {
           return const Center(child: Text("No trip selected. Return to Home."));
@@ -160,12 +170,13 @@ class _TravelHubAppState extends State<TravelHubApp> {
           navigateTo: _navigateTo,
         );
       case AppPage.savedLocations:
-        return SavedLocationsScreen(navigateTo: _navigateTo,
+        return SavedLocationsScreen(
+          navigateTo: _navigateTo,
           isLoggedIn: _isLoggedIn,
           showAuthModal: _showAuthModal,
           onThemeToggle: _toggleTheme,
         );
-    
+
       case AppPage.booking:
         if (_selectedTrip == null) {
           return const Center(child: Text("No trip selected. Return to Home."));
@@ -181,7 +192,6 @@ class _TravelHubAppState extends State<TravelHubApp> {
           showAuthModal: _showAuthModal,
           onThemeToggle: _toggleTheme,
         );
-
     }
   }
 
@@ -192,18 +202,47 @@ class _TravelHubAppState extends State<TravelHubApp> {
       scrollBehavior: SmoothScrollBehavior(),
       themeMode: _themeMode,
       theme: ThemeData(
-        brightness: Brightness.light, 
-        primaryColor: primaryBlue, 
+        brightness: Brightness.light,
+        primaryColor: primaryBlue,
         scaffoldBackgroundColor: lightBackground,
         cardColor: Colors.white,
       ),
       darkTheme: ThemeData(
-        brightness: Brightness.dark, 
-        primaryColor: accentOrange, 
+        brightness: Brightness.dark,
+        primaryColor: accentOrange,
         scaffoldBackgroundColor: const Color(0xFF121212),
         cardColor: const Color(0xFF1E1E1E),
       ),
-      home: Scaffold(body: _getPage()),
+      initialRoute: '/',
+      routes: {
+        '/': (context) => const SplashScreen(),
+        '/onboarding': (context) => const OnboardingScreen(),
+        '/search': (context) => const TripSearchScreen(),
+        '/filters': (context) => const FiltersScreen(),
+        '/home': (context) => Scaffold(body: _getPage()),
+      },
+      onGenerateRoute: (settings) {
+        if (settings.name == '/search-results') {
+          final args = settings.arguments as Map<String, dynamic>?;
+          return MaterialPageRoute(
+            builder: (context) => SearchResultsScreen(
+              destination: args?['destination'] as String?,
+              dateRange: args?['dateRange'] as DateTimeRange?,
+              budget: args?['budget'] as double?,
+            ),
+          );
+        }
+        if (settings.name == '/trip-details') {
+          final trip = settings.arguments as Map<String, dynamic>;
+          return MaterialPageRoute(
+            builder: (context) =>
+                TripDetailsScreen(trip: trip, navigateTo: _navigateTo),
+          );
+        }
+        return MaterialPageRoute(
+          builder: (context) => Scaffold(body: _getPage()),
+        );
+      },
     );
   }
 }
