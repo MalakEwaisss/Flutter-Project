@@ -41,11 +41,14 @@ class _TripSearchScreenState extends State<TripSearchScreen> {
   }
 
   void _performSearch() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Searching for trips...'),
-        duration: Duration(seconds: 2),
-      ),
+    Navigator.pushNamed(
+      context,
+      '/search-results',
+      arguments: {
+        'destination': _destinationController.text,
+        'dateRange': _selectedDateRange,
+        'budget': _budgetValue,
+      },
     );
   }
 
@@ -62,6 +65,9 @@ class _TripSearchScreenState extends State<TripSearchScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        backgroundColor: const Color.fromARGB(233, 250, 250, 250),
+        foregroundColor: Colors.black,
+        elevation: 0,
         title: const Text('Search Trips'),
         actions: [
           IconButton(
@@ -105,7 +111,7 @@ class _TripSearchScreenState extends State<TripSearchScreen> {
                 child: ElevatedButton(
                   onPressed: _performSearch,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Theme.of(context).colorScheme.primary,
+                    backgroundColor: const Color(0xFF1E3A8A),
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
@@ -237,10 +243,10 @@ class _BudgetSliderCard extends StatelessWidget {
                 ),
                 Text(
                   '\$${value.toInt()}',
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: Theme.of(context).colorScheme.primary,
+                    color: Color(0xFF1E3A8A),
                   ),
                 ),
               ],
@@ -308,10 +314,8 @@ class _PopularDestinations extends StatelessWidget {
             return ActionChip(
               label: Text(destination),
               onPressed: () {},
-              backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-              labelStyle: TextStyle(
-                color: Theme.of(context).colorScheme.onPrimaryContainer,
-              ),
+              backgroundColor: const Color(0xFFE0E7FF),
+              labelStyle: const TextStyle(color: Color(0xFF1E3A8A)),
             );
           }).toList(),
         ),
