@@ -17,18 +17,21 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       title: 'Discover Amazing Places',
       description:
           'Explore destinations around the world and find your perfect trip',
+      imagePath: 'assets/images/1.jpeg',
     ),
     OnboardingPage(
       icon: Icons.calendar_month,
       title: 'Plan Your Journey',
       description:
           'Easily schedule your trips with flexible dates and customizable options',
+      imagePath: 'assets/images/2.jpeg',
     ),
     OnboardingPage(
       icon: Icons.card_travel,
       title: 'Travel with Confidence',
       description:
           'Book your dream vacation with secure payments and trusted partners',
+      imagePath: 'assets/images/3.jpeg',
     ),
   ];
 
@@ -45,11 +48,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   void _navigateToSearch() {
-    Navigator.pushReplacementNamed(context, '/search');
+    Navigator.pushReplacementNamed(context, '/home');
   }
 
   void _skipToSearch() {
-    Navigator.pushReplacementNamed(context, '/search');
+    Navigator.pushReplacementNamed(context, '/home');
   }
 
   @override
@@ -64,11 +67,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 alignment: Alignment.topRight,
                 child: TextButton(
                   onPressed: _skipToSearch,
-                  child: Text(
+                  child: const Text(
                     'Skip',
                     style: TextStyle(
                       fontSize: 16,
-                      color: Theme.of(context).colorScheme.primary,
+                      color: Color(0xFF1E3A8A),
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -102,7 +105,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           );
                         },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Theme.of(context).colorScheme.primary,
+                    backgroundColor: const Color(0xFF1E3A8A),
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
@@ -134,46 +137,74 @@ class _OnboardingPageWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 32.0),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 200,
-            height: 200,
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.primaryContainer,
-              shape: BoxShape.circle,
+    final screenHeight = MediaQuery.of(context).size.height;
+    final imageHeight = screenHeight * 0.75;
+    final contentHeight = screenHeight * 0.25;
+
+    return Stack(
+      children: [
+        // Background Image (top 2/3)
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          height: imageHeight,
+          child: Image.asset(page.imagePath, fit: BoxFit.cover),
+        ),
+        // Rounded Content Section (bottom 1/3)
+        Positioned(
+          bottom: 0,
+          left: 0,
+          right: 0,
+          child: Container(
+            height: contentHeight,
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(30),
+                topRight: Radius.circular(30),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black12,
+                  blurRadius: 10,
+                  offset: Offset(0, -5),
+                ),
+              ],
             ),
-            child: Icon(
-              page.icon,
-              size: 100,
-              color: Theme.of(context).colorScheme.primary,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 32.0,
+                vertical: 24.0,
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    page.title,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF1E3A8A),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    page.description,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.grey[700],
+                      height: 1.5,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-          const SizedBox(height: 48),
-          Text(
-            page.title,
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: Theme.of(context).colorScheme.onBackground,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            page.description,
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-              color: Theme.of(
-                context,
-              ).colorScheme.onBackground.withOpacity(0.7),
-              height: 1.5,
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -197,8 +228,8 @@ class _PageIndicator extends StatelessWidget {
           height: 8,
           decoration: BoxDecoration(
             color: currentPage == index
-                ? Theme.of(context).colorScheme.primary
-                : Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                ? const Color(0xFF1E3A8A)
+                : const Color(0xFF1E3A8A).withOpacity(0.3),
             borderRadius: BorderRadius.circular(4),
           ),
         ),
@@ -211,10 +242,12 @@ class OnboardingPage {
   final IconData icon;
   final String title;
   final String description;
+  final String imagePath;
 
   OnboardingPage({
     required this.icon,
     required this.title,
     required this.description,
+    required this.imagePath,
   });
 }

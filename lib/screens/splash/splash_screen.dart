@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 
+import 'package:flutter_application_1/config/config.dart';
+
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -50,13 +52,10 @@ class _SplashScreenState extends State<SplashScreen>
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
-          gradient: LinearGradient(
+          gradient: const LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              Theme.of(context).colorScheme.primary,
-              Theme.of(context).colorScheme.secondary,
-            ],
+            colors: [Color(0xFF1E3A8A), Color(0xFF3B82F6)],
           ),
         ),
         child: Center(
@@ -68,8 +67,8 @@ class _SplashScreenState extends State<SplashScreen>
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Container(
-                    width: 120,
-                    height: 120,
+                    width: 90,
+                    height: 90,
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(30),
@@ -83,13 +82,13 @@ class _SplashScreenState extends State<SplashScreen>
                     ),
                     child: Icon(
                       Icons.flight_takeoff,
-                      size: 60,
-                      color: Theme.of(context).colorScheme.primary,
+                      size: 45,
+                      color: primaryBlue,
                     ),
                   ),
                   const SizedBox(height: 24),
                   Text(
-                    'Travilo',
+                    'Travio',
                     style: Theme.of(context).textTheme.displaySmall?.copyWith(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
