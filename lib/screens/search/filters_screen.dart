@@ -110,7 +110,7 @@ class _FiltersScreenState extends State<FiltersScreen> {
                 child: ElevatedButton(
                   onPressed: _applyFilters,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Theme.of(context).colorScheme.primary,
+                    backgroundColor: const Color(0xFF1E3A8A),
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
@@ -204,9 +204,7 @@ class _TripTypeChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
-          color: isSelected
-              ? Theme.of(context).colorScheme.primary
-              : Colors.transparent,
+          color: isSelected ? const Color(0xFF1E3A8A) : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Column(
@@ -270,18 +268,18 @@ class _PriceRangeCard extends StatelessWidget {
               children: [
                 Text(
                   '\$${priceRange.start.toInt()}',
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: Theme.of(context).colorScheme.primary,
+                    color: Color(0xFF1E3A8A),
                   ),
                 ),
                 Text(
                   '\$${priceRange.end.toInt()}',
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: Theme.of(context).colorScheme.primary,
+                    color: Color(0xFF1E3A8A),
                   ),
                 ),
               ],
@@ -300,18 +298,14 @@ class _PriceRangeCard extends StatelessWidget {
                   '\$0',
                   style: TextStyle(
                     fontSize: 12,
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.onBackground.withOpacity(0.6),
+                    color: Colors.white
                   ),
                 ),
                 Text(
                   '\$10,000',
                   style: TextStyle(
                     fontSize: 12,
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.onBackground.withOpacity(0.6),
+                    color: Colors.white
                   ),
                 ),
               ],
