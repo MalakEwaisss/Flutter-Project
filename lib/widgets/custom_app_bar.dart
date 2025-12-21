@@ -26,7 +26,7 @@ class CustomAppBar extends StatelessWidget {
       child: Row(
         children: [
           const Text(
-            'TravelHub',
+            'Travio',
             style: TextStyle(
               color: primaryBlue,
               fontSize: 24,
