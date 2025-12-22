@@ -23,6 +23,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
   String _selectedTab = 'overview';
   bool _isFavorited = false;
   bool _isCheckingFavorite = true;
+  DateTime? _selectedDate;
 
   @override
   void initState() {
