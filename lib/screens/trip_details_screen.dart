@@ -132,6 +132,20 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     });
   }
 
+  Future<void> _selectDate(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate ?? DateTime.now(),
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+    );
+    if (picked != null && picked != _selectedDate) {
+      setState(() {
+        _selectedDate = picked;
+      });
+    }
+  }
+
   bool get _isBookedView => widget.trip['_isBookedView'] == true;
 
   Future<void> _showBookingDetailsDialog() async {
@@ -412,6 +426,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                     title: const Text('Travel Date'),
                     subtitle: Text(_selectedDate == null ? 'Tap to choose date' : '${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}'),
                     onTap: () => _selectDate(context),
+                  ),
                   const SizedBox(height: 8),
                   Row(
                     children: [
