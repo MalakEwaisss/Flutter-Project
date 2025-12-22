@@ -43,6 +43,9 @@ class _SelectMeetingPointScreenState extends State<SelectMeetingPointScreen> {
   
   List<MeetingPoint> _popularMeetingPoints = [];
   List<MeetingPoint> _filteredPoints = [];
+  
+  // Check if we came from booking screen
+  bool get _isFromBooking => widget.trip['_fromBooking'] == true;
 
   @override
   void initState() {
@@ -220,8 +223,17 @@ class _SelectMeetingPointScreenState extends State<SelectMeetingPointScreen> {
       ),
     );
 
-    // Navigate back to trip details
-    widget.navigateTo(AppPage.tripDetails, trip: widget.trip);
+    // Navigate back with the selected meeting point
+    if (_isFromBooking) {
+      // Going back to booking screen - pass meeting point data
+      final tripWithMeetingPoint = Map<String, dynamic>.from(widget.trip);
+      tripWithMeetingPoint['_selectedMeetingPoint'] = _selectedLocationName;
+      tripWithMeetingPoint.remove('_fromBooking'); // Clean up flag
+      widget.navigateTo(AppPage.booking, trip: tripWithMeetingPoint);
+    } else {
+      // Going back to trip details
+      widget.navigateTo(AppPage.tripDetails, trip: widget.trip);
+    }
   }
 
   @override
@@ -232,7 +244,14 @@ class _SelectMeetingPointScreenState extends State<SelectMeetingPointScreen> {
         backgroundColor: primaryBlue,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => widget.navigateTo(AppPage.tripDetails, trip: widget.trip),
+          onPressed: () {
+            // Navigate back based on where we came from
+            if (_isFromBooking) {
+              widget.navigateTo(AppPage.booking, trip: widget.trip);
+            } else {
+              widget.navigateTo(AppPage.tripDetails, trip: widget.trip);
+            }
+          },
         ),
       ),
       body: LayoutBuilder(
@@ -372,53 +391,51 @@ class _SelectMeetingPointScreenState extends State<SelectMeetingPointScreen> {
             ..._popularMeetingPoints.map((point) {
               final isSelected = _selectedLocation == point.location;
               return Marker(
-  point: point.location,
-  width: 60,
-  height: 60,
-  child: GestureDetector(
-    onTap: () => _selectPredefinedPoint(point),
-    child: Column(
-      children: [
-        Container(
-          width: isSelected ? 44 : 36,
-          height: isSelected ? 44 : 36,
-          decoration: BoxDecoration(
-            color: isSelected ? accentOrange : primaryBlue,
-            shape: BoxShape.circle,
-            border: Border.all(color: Colors.white, width: 3),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.3),
-                blurRadius: 8,
-              ),
-            ],
-          ),
-          child: Icon(
-            point.icon,
-            color: Colors.white,
-            size: isSelected ? 24 : 20,
-          ),
-        ),
-      ],
-    ),
-  ),
-);
-
+                point: point.location,
+                width: 60,
+                height: 60,
+                child: GestureDetector(
+                  onTap: () => _selectPredefinedPoint(point),
+                  child: Column(
+                    children: [
+                      Container(
+                        width: isSelected ? 44 : 36,
+                        height: isSelected ? 44 : 36,
+                        decoration: BoxDecoration(
+                          color: isSelected ? accentOrange : primaryBlue,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 3),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.3),
+                              blurRadius: 8,
+                            ),
+                          ],
+                        ),
+                        child: Icon(
+                          point.icon,
+                          color: Colors.white,
+                          size: isSelected ? 24 : 20,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
             }).toList(),
             
             // Custom selected location
             if (_selectedLocation != null && _isCustomLocation)
-             Marker(
-  point: _selectedLocation!,
-  width: 60,
-  height: 60,
-  child: const Icon(
-    Icons.place,
-    color: accentOrange,
-    size: 50,
-  ),
-),
-
+              Marker(
+                point: _selectedLocation!,
+                width: 60,
+                height: 60,
+                child: const Icon(
+                  Icons.place,
+                  color: accentOrange,
+                  size: 50,
+                ),
+              ),
           ],
         ),
         

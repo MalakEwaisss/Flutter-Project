@@ -1,4 +1,3 @@
-// ignore_for_file: deprecated_member_use
 import 'package:flutter/material.dart';
 import '../config/config.dart';
 import '../widgets/max_width_section.dart';
@@ -10,24 +9,20 @@ class TripDetailsScreen extends StatefulWidget {
   final Map<String, dynamic> trip;
   final Function(AppPage, {Map<String, dynamic>? trip}) navigateTo;
 
-  const TripDetailsScreen({super.key, required this.trip, required this.navigateTo});
+  const TripDetailsScreen({
+    super.key,
+    required this.trip,
+    required this.navigateTo,
+  });
 
   @override
   State<TripDetailsScreen> createState() => _TripDetailsScreenState();
 }
 
 class _TripDetailsScreenState extends State<TripDetailsScreen> {
-  DateTime? _selectedDate;
-  String? _selectedClass;
-  bool _isLoading = false;
-  String? _meetingPoint;
-
-  final List<String> _seatCategories = ['Economy', 'Economy Plus', 'Business Class', 'First Class'];
-
   String _selectedTab = 'overview';
   bool _isFavorited = false;
   bool _isCheckingFavorite = true;
-
 
   @override
   void initState() {
@@ -149,10 +144,10 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
   bool get _isBookedView => widget.trip['_isBookedView'] == true;
 
   Future<void> _showBookingDetailsDialog() async {
-    final bookingDate = widget.trip['_bookingDate'] != null 
+    final bookingDate = widget.trip['_bookingDate'] != null
         ? DateTime.parse(widget.trip['_bookingDate']).toLocal()
         : DateTime.now();
-    
+
     await showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -176,13 +171,22 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                 const Divider(height: 20),
                 _buildDialogDetailRow('Location', widget.trip['location']),
                 const Divider(height: 20),
-                _buildDialogDetailRow('Number of Guests', widget.trip['_numberOfGuests']?.toString() ?? 'N/A'),
+                _buildDialogDetailRow(
+                  'Number of Guests',
+                  widget.trip['_numberOfGuests']?.toString() ?? 'N/A',
+                ),
                 const Divider(height: 20),
-                _buildDialogDetailRow('Total Price', '\$${widget.trip['_totalPrice']?.toString() ?? 'N/A'}'),
+                _buildDialogDetailRow(
+                  'Total Price',
+                  '\$${widget.trip['_totalPrice']?.toString() ?? 'N/A'}',
+                ),
                 const Divider(height: 20),
-                _buildDialogDetailRow('Booking Date', 
-                    '${bookingDate.year}-${bookingDate.month.toString().padLeft(2, '0')}-${bookingDate.day.toString().padLeft(2, '0')}'),
-                if (widget.trip['_specialRequests'] != null && widget.trip['_specialRequests'].toString().isNotEmpty) ...[
+                _buildDialogDetailRow(
+                  'Booking Date',
+                  '${bookingDate.year}-${bookingDate.month.toString().padLeft(2, '0')}-${bookingDate.day.toString().padLeft(2, '0')}',
+                ),
+                if (widget.trip['_specialRequests'] != null &&
+                    widget.trip['_specialRequests'].toString().isNotEmpty) ...[
                   const Divider(height: 20),
                   const Text(
                     'Special Requests:',
@@ -235,10 +239,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
         const SizedBox(height: 4),
         Text(
           value,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
       ],
     );
@@ -276,7 +277,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
 
     if (confirmed == true) {
       final bookingId = widget.trip['_bookingId'];
-      
+
       if (bookingId == null) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -288,13 +289,10 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
         }
         return;
       }
-      
+
       try {
-        await supabase
-            .from('bookings')
-            .delete()
-            .eq('id', bookingId);
-        
+        await supabase.from('bookings').delete().eq('id', bookingId);
+
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -374,7 +372,11 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                   const SizedBox(height: 8),
                   Row(
                     children: [
-                      const Icon(Icons.location_on, color: subtitleColor, size: 20),
+                      const Icon(
+                        Icons.location_on,
+                        color: subtitleColor,
+                        size: 20,
+                      ),
                       const SizedBox(width: 5),
                       Text(
                         widget.trip['location'],
@@ -384,48 +386,6 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                         ),
                       ),
                     ],
-                  ),
-                  const SizedBox(height: 30),
-                  const Text('About this trip', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 10),
-                  Text(widget.trip['description'] ?? 'Explore this amazing destination.', style: const TextStyle(fontSize: 16, height: 1.6)),
-                  
-                  const SizedBox(height: 20),
-                  // View Itinerary Button
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: () {
-                        widget.navigateTo(AppPage.tripLocationView, trip: widget.trip);
-                      },
-                      icon: const Icon(Icons.route, color: primaryBlue),
-                      label: const Text(
-                        'View Full Itinerary & Map',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: primaryBlue,
-                        ),
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        side: const BorderSide(color: primaryBlue, width: 2),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    ),
-                  ),
-                  
-                  const SizedBox(height: 30),
-                  const Text('Booking Preferences', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                  const Divider(),
-                  
-                  ListTile(
-                    leading: const Icon(Icons.calendar_today, color: primaryBlue),
-                    title: const Text('Travel Date'),
-                    subtitle: Text(_selectedDate == null ? 'Tap to choose date' : '${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}'),
-                    onTap: () => _selectDate(context),
                   ),
                   const SizedBox(height: 8),
                   Row(
@@ -457,20 +417,47 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
         const SizedBox(height: 30),
         const Text(
           'About this trip',
-          style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 10),
         Text(
           widget.trip['description'] ?? 'Explore this amazing destination.',
-          style: const TextStyle(
-            fontSize: 16,
-            height: 1.6,
+          style: const TextStyle(fontSize: 16, height: 1.6),
+        ),
+
+        const SizedBox(height: 20),
+        // View Itinerary Button
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: () {
+              widget.navigateTo(AppPage.tripLocationView, trip: widget.trip);
+            },
+            icon: const Icon(Icons.route, color: primaryBlue),
+            label: const Text(
+              'View Full Itinerary & Map',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: primaryBlue,
+              ),
+            ),
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              side: const BorderSide(color: primaryBlue, width: 2),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
           ),
         ),
+
         const SizedBox(height: 30),
+        const Text(
+          'Trip Details',
+          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 10),
         Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
@@ -486,11 +473,23 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
           ),
           child: Column(
             children: [
-              _buildDetailRow(Icons.calendar_today, 'Date', widget.trip['date'] ?? 'TBD'),
+              _buildDetailRow(
+                Icons.calendar_today,
+                'Date',
+                widget.trip['date'] ?? 'TBD',
+              ),
               const Divider(height: 30),
-              _buildDetailRow(Icons.airplane_ticket, 'Class', widget.trip['class'] ?? 'Economy'),
+              _buildDetailRow(
+                Icons.airplane_ticket,
+                'Class',
+                widget.trip['class'] ?? 'Economy',
+              ),
               const Divider(height: 30),
-              _buildDetailRow(Icons.flight, 'Aircraft', widget.trip['aircraft'] ?? 'N/A'),
+              _buildDetailRow(
+                Icons.flight,
+                'Aircraft',
+                widget.trip['aircraft'] ?? 'N/A',
+              ),
             ],
           ),
         ),
@@ -549,7 +548,13 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
             backgroundColor: primaryBlue,
             leading: IconButton(
               icon: const Icon(Icons.arrow_back, color: Colors.white),
-              onPressed: () => widget.navigateTo(AppPage.trips),
+              onPressed: () {
+                if (Navigator.canPop(context)) {
+                  Navigator.pop(context);
+                } else {
+                  widget.navigateTo(AppPage.trips);
+                }
+              },
             ),
             actions: [
               if (!_isCheckingFavorite)
@@ -584,23 +589,16 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                     ),
                     child: Row(
                       children: [
-                        _buildTabButton('overview', 'Overview', Icons.info_outline),
+                        _buildTabButton(
+                          'overview',
+                          'Overview',
+                          Icons.info_outline,
+                        ),
                         _buildTabButton('flight', 'Flight', Icons.flight),
                         _buildTabButton('weather', 'Weather', Icons.wb_sunny),
                       ],
                     ),
                   ),
-
-                  ListTile(
-                    leading: const Icon(Icons.place, color: primaryBlue),
-                    title: const Text('Meeting Point'),
-                    subtitle: Text(_meetingPoint ?? 'Tap to select meeting location'),
-                    trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                    onTap: () {
-                      widget.navigateTo(AppPage.selectMeetingPoint, trip: widget.trip);
-                    },
-                  ),
-
                   const SizedBox(height: 30),
                   if (_selectedTab == 'overview')
                     _buildOverviewContent()
@@ -618,11 +616,16 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                           if (_isBookedView) {
                             _showBookingDetailsDialog();
                           } else {
-                            widget.navigateTo(AppPage.booking, trip: widget.trip);
+                            widget.navigateTo(
+                              AppPage.booking,
+                              trip: widget.trip,
+                            );
                           }
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: _isBookedView ? primaryBlue : accentOrange,
+                          backgroundColor: _isBookedView
+                              ? primaryBlue
+                              : accentOrange,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(30),
                           ),
@@ -631,12 +634,16 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(
-                              _isBookedView ? Icons.receipt_long : Icons.book_online,
+                              _isBookedView
+                                  ? Icons.receipt_long
+                                  : Icons.book_online,
                               color: Colors.white,
                             ),
                             const SizedBox(width: 10),
                             Text(
-                              _isBookedView ? 'View Booking Details' : 'Book Now',
+                              _isBookedView
+                                  ? 'View Booking Details'
+                                  : 'Book Now',
                               style: const TextStyle(
                                 fontSize: 18,
                                 color: Colors.white,

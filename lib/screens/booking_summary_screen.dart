@@ -1,4 +1,3 @@
-// ignore_for_file: deprecated_member_use
 import 'package:flutter/material.dart';
 import '../config/config.dart';
 import '../widgets/max_width_section.dart';
@@ -19,12 +18,29 @@ class BookingSummaryScreen extends StatefulWidget {
 }
 
 class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
-  final TextEditingController _guestsController = TextEditingController();
+  final TextEditingController _guestsController = TextEditingController(text: '1');
   final TextEditingController _specialRequestsController = TextEditingController();
   final TextEditingController _seatNumberController = TextEditingController();
   bool _isLoading = false;
   DateTime? _selectedTravelDate;
   String _selectedSeatCategory = 'Economy';
+  String? _selectedMeetingPoint;
+
+  @override
+  void initState() {
+    super.initState();
+    // Restore meeting point if coming back from meeting point selection
+    if (widget.trip['_selectedMeetingPoint'] != null) {
+      _selectedMeetingPoint = widget.trip['_selectedMeetingPoint'];
+    }
+  }
+
+  final List<String> _seatCategories = [
+    'Economy',
+    'Economy Plus',
+    'Business Class',
+    'First Class',
+  ];
 
   @override
   void dispose() {
@@ -46,6 +62,7 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
       return;
     }
 
+    // Validate number of guests
     if (_guestsController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -67,6 +84,7 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
       return;
     }
 
+    // Validate travel date
     if (_selectedTravelDate == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -77,6 +95,7 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
       return;
     }
 
+    // Validate seat number
     if (_seatNumberController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -103,6 +122,7 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
         'travel_date': _selectedTravelDate!.toIso8601String().split('T')[0],
         'seat_category': _selectedSeatCategory,
         'seat_number': _seatNumberController.text.trim(),
+        'meeting_point': _selectedMeetingPoint ?? 'Not selected',
         'special_requests': _specialRequestsController.text.trim(),
         'total_price': totalPrice,
         'booking_date': DateTime.now().toIso8601String(),
@@ -208,7 +228,7 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Booking Summary'),
+        title: const Text('Complete Your Booking'),
         backgroundColor: primaryBlue,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
@@ -221,6 +241,8 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 20),
+              
+              // Trip Summary Card
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
@@ -293,6 +315,7 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
                   ],
                 ),
               ),
+              
               const SizedBox(height: 30),
               const Text(
                 'Booking Information',
@@ -302,13 +325,15 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
                 ),
               ),
               const SizedBox(height: 20),
+              
+              // Number of Guests
               TextField(
                 controller: _guestsController,
                 keyboardType: TextInputType.number,
                 decoration: InputDecoration(
                   labelText: 'Number of Guests',
                   hintText: 'Enter number of guests',
-                  prefixIcon: const Icon(Icons.people),
+                  prefixIcon: const Icon(Icons.people, color: primaryBlue),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
                   ),
@@ -319,7 +344,9 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
                   setState(() {});
                 },
               ),
+              
               const SizedBox(height: 20),
+              
               // Travel Date Picker
               InkWell(
                 onTap: () async {
@@ -338,42 +365,54 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
                 child: InputDecorator(
                   decoration: InputDecoration(
                     labelText: 'Travel Date',
-                    prefixIcon: const Icon(Icons.calendar_today),
+                    prefixIcon: const Icon(Icons.calendar_today, color: primaryBlue),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
                     filled: true,
                     fillColor: Theme.of(context).cardColor,
                   ),
-                  child: Text(
-                    _selectedTravelDate == null
-                        ? 'Select travel date'
-                        : '${_selectedTravelDate!.year}-${_selectedTravelDate!.month.toString().padLeft(2, '0')}-${_selectedTravelDate!.day.toString().padLeft(2, '0')}',
-                    style: TextStyle(
-                      color: _selectedTravelDate == null ? Colors.grey : null,
-                    ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        _selectedTravelDate == null
+                            ? 'Select travel date'
+                            : '${_selectedTravelDate!.year}-${_selectedTravelDate!.month.toString().padLeft(2, '0')}-${_selectedTravelDate!.day.toString().padLeft(2, '0')}',
+                        style: TextStyle(
+                          color: _selectedTravelDate == null ? Colors.grey : null,
+                        ),
+                      ),
+                      Icon(
+                        Icons.arrow_forward_ios,
+                        size: 16,
+                        color: subtitleColor,
+                      ),
+                    ],
                   ),
                 ),
               ),
+              
               const SizedBox(height: 20),
+              
               // Seat Category Dropdown
               DropdownButtonFormField<String>(
                 value: _selectedSeatCategory,
                 decoration: InputDecoration(
                   labelText: 'Seat Category',
-                  prefixIcon: const Icon(Icons.airline_seat_recline_extra),
+                  prefixIcon: const Icon(Icons.airline_seat_recline_extra, color: primaryBlue),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
                   ),
                   filled: true,
                   fillColor: Theme.of(context).cardColor,
                 ),
-                items: const [
-                  DropdownMenuItem(value: 'Economy', child: Text('Economy')),
-                  DropdownMenuItem(value: 'Economy Plus', child: Text('Economy Plus')),
-                  DropdownMenuItem(value: 'Business Class', child: Text('Business Class')),
-                  DropdownMenuItem(value: 'First Class', child: Text('First Class')),
-                ],
+                items: _seatCategories.map((category) {
+                  return DropdownMenuItem(
+                    value: category,
+                    child: Text(category),
+                  );
+                }).toList(),
                 onChanged: (String? newValue) {
                   if (newValue != null) {
                     setState(() {
@@ -382,7 +421,9 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
                   }
                 },
               ),
+              
               const SizedBox(height: 20),
+              
               // Seat Number Input
               TextField(
                 controller: _seatNumberController,
@@ -390,7 +431,7 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
                 decoration: InputDecoration(
                   labelText: 'Seat Number',
                   hintText: 'e.g., 19D, 23B, 4C',
-                  prefixIcon: const Icon(Icons.event_seat),
+                  prefixIcon: const Icon(Icons.event_seat, color: primaryBlue),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
                   ),
@@ -398,7 +439,52 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
                   fillColor: Theme.of(context).cardColor,
                 ),
               ),
+              
               const SizedBox(height: 20),
+              
+              // Meeting Point Selection
+              InkWell(
+                onTap: () {
+                  // Pass current booking data along with trip
+                  final tripWithBookingData = Map<String, dynamic>.from(widget.trip);
+                  tripWithBookingData['_fromBooking'] = true;
+                  widget.navigateTo(AppPage.selectMeetingPoint, trip: tripWithBookingData);
+                },
+                child: InputDecorator(
+                  decoration: InputDecoration(
+                    labelText: 'Meeting Point',
+                    prefixIcon: const Icon(Icons.place, color: primaryBlue),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    filled: true,
+                    fillColor: Theme.of(context).cardColor,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          _selectedMeetingPoint ?? 'Tap to select meeting location',
+                          style: TextStyle(
+                            color: _selectedMeetingPoint == null ? Colors.grey : null,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      Icon(
+                        Icons.arrow_forward_ios,
+                        size: 16,
+                        color: subtitleColor,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              
+              const SizedBox(height: 20),
+              
+              // Special Requests
               TextField(
                 controller: _specialRequestsController,
                 maxLines: 4,
@@ -407,21 +493,26 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
                   hintText: 'Any special requirements or requests...',
                   prefixIcon: const Padding(
                     padding: EdgeInsets.only(bottom: 60),
-                    child: Icon(Icons.note),
+                    child: Icon(Icons.note, color: primaryBlue),
                   ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
                   ),
                   filled: true,
                   fillColor: Theme.of(context).cardColor,
+                  alignLabelWithHint: true,
                 ),
               ),
+              
               const SizedBox(height: 30),
+              
+              // Price Summary
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
                   color: primaryBlue.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(15),
+                  border: Border.all(color: primaryBlue.withOpacity(0.3)),
                 ),
                 child: Column(
                   children: [
@@ -485,28 +576,39 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
                   ],
                 ),
               ),
+              
               const SizedBox(height: 40),
+              
+              // Confirm Button
               SizedBox(
                 width: double.infinity,
                 height: 60,
-                child: ElevatedButton(
+                child: ElevatedButton.icon(
                   onPressed: _isLoading ? null : _handleConfirmBooking,
+                  icon: _isLoading 
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : const Icon(Icons.check_circle, color: Colors.white),
+                  label: Text(
+                    _isLoading ? 'Processing...' : 'Confirm Booking',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: accentOrange,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(30),
                     ),
                   ),
-                  child: _isLoading
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text(
-                          'Confirm Booking',
-                          style: TextStyle(
-                            fontSize: 18,
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
                 ),
               ),
               const SizedBox(height: 40),
