@@ -74,6 +74,17 @@ class CustomAppBar extends StatelessWidget {
               ),
             ),
           ),
+          TextButton(
+          onPressed: () => navigateTo(AppPage.community),
+          child: Text(
+            'Community',
+            style: TextStyle(
+              color: currentPage == AppPage.community
+                  ? accentOrange
+                  : primaryBlue,
+            ),
+          ),
+        ),
           const SizedBox(width: 10),
           IconButton(
             icon: const Icon(Icons.search),

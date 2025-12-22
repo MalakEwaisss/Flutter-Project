@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_application_1/screens/SelectMeetingPointScreen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-
+import 'package:provider/provider.dart';
+import 'providers/community_provider.dart';
 import 'auth/auth_modal.dart';
 import 'config/config.dart';
 import 'screens/home_screen.dart';
@@ -13,6 +14,7 @@ import 'screens/profile_screen.dart';
 import 'screens/map_overview_screen.dart';
 import 'screens/trip_location_view_screen.dart';
 import 'screens/saved_locations_screen.dart';
+import 'screens/community/community_screen.dart';
 
 import 'screens/booking_summary_screen.dart';
 import 'screens/explore_trips_screen.dart';
@@ -51,7 +53,14 @@ Future<void> main() async {
         'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpvZmNka2RveGhramVqZ2tkcmJrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU5MzY1ODIsImV4cCI6MjA4MTUxMjU4Mn0.z3gUMnRDFNp3zvxaXd1jXyZa-CwINR43KIQOBJa66TQ',
   );
 
-  runApp(const TravelHubApp());
+ runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => CommunityProvider()),
+      ],
+      child: const TravelHubApp(),
+    ),
+  );
 }
 
 // Global Supabase client for easy access across the app
@@ -192,6 +201,13 @@ class _TravelHubAppState extends State<TravelHubApp> {
           showAuthModal: _showAuthModal,
           onThemeToggle: _toggleTheme,
         );
+        case AppPage.community:
+      return CommunityScreen(
+        navigateTo: _navigateTo,
+        isLoggedIn: _isLoggedIn,
+        showAuthModal: _showAuthModal,
+        onThemeToggle: _toggleTheme,
+      );
     }
   }
 
