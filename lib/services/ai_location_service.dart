@@ -5,9 +5,13 @@ import '../main.dart';
 
 class AILocationService {
   // Get your free API key from: https://makersuite.google.com/app/apikey
-  static const String _geminiApiKey = 'AIzaSyDCn7RWZpe1pJvtEuo7Emtj8axM2SeHcyw';
-  static const String _geminiApiUrl = 
-      'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
+ static const String _geminiApiKey = 'AIzaSyDCn7RWZpe1pJvtEuo7Emtj8axM2SeHcyw';
+   static const String _baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
+  
+  // In-memory cache for generated data (no database needed!)
+  static final Map<String, List<Map<String, dynamic>>> _itineraryCache = {};
+  static final Map<String, List<Map<String, dynamic>>> _meetingPointsCache = {};
+  static final Map<String, List<Map<String, dynamic>>> _locationCache = {};
   
   // Generate itinerary for a trip
   static Future<List<Map<String, dynamic>>> generateItinerary(
@@ -16,20 +20,20 @@ class AILocationService {
     int days,
   ) async {
     try {
-      // Check if already exists in database
-      final existing = await supabase
-          .from('trip_itineraries')
-          .select()
-          .eq('trip_id', tripTitle.replaceAll(' ', '_').toLowerCase())
-          .order('day');
+      final cacheKey = '${tripTitle}_${location}_$days';
+      print('🔍 Generating itinerary for: $tripTitle in $location ($days days)');
       
-      if (existing.isNotEmpty) {
-        return List<Map<String, dynamic>>.from(existing);
+      // Check cache first
+      if (_itineraryCache.containsKey(cacheKey)) {
+        print('✅ Found itinerary in cache');
+        return _itineraryCache[cacheKey]!;
       }
 
-      // Generate with AI if not exists
+      print('📡 Making API call to Gemini...');
+      
+      // Generate with AI
       final response = await http.post(
-        Uri.parse('$_geminiApiUrl?key=$_geminiApiKey'),
+        Uri.parse('$_baseUrl?key=$_geminiApiKey'),
         headers: {
           'Content-Type': 'application/json',
         },
@@ -48,7 +52,7 @@ For each day, provide:
 5. 4-5 activities for that day
 6. Suggested time range
 
-Return ONLY valid JSON array format with no markdown formatting or code blocks:
+Return ONLY valid JSON array format with no extra text:
 [
   {
     "day": 1,
@@ -73,40 +77,42 @@ Make sure coordinates are accurate for the actual locations.'''
         }),
       );
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final content = data['candidates'][0]['content']['parts'][0]['text'] as String;
-        
-        // Parse JSON from response (remove markdown code blocks if present)
-        String cleanContent = content.trim();
-        cleanContent = cleanContent.replaceAll('```json', '').replaceAll('```', '').trim();
-        
-        final jsonMatch = RegExp(r'\[[\s\S]*\]').firstMatch(cleanContent);
-        if (jsonMatch != null) {
-          final itinerary = jsonDecode(jsonMatch.group(0)!) as List;
-          
-          // Store in database
-          final tripId = tripTitle.replaceAll(' ', '_').toLowerCase();
-          for (var item in itinerary) {
-            await supabase.from('trip_itineraries').insert({
-              'trip_id': tripId,
-              'day': item['day'],
-              'title': item['title'],
-              'description': item['description'],
-              'latitude': item['latitude'],
-              'longitude': item['longitude'],
-              'activities': item['activities'],
-              'time': item['time'],
-            });
-          }
-          
-          return itinerary.cast<Map<String, dynamic>>();
-        }
-      }
+      print('📥 Response status: ${response.statusCode}');
       
-      throw Exception('Failed to generate itinerary');
-    } catch (e) {
-      print('Error generating itinerary: $e');
+      if (response.statusCode != 200) {
+        print('❌ API Error: ${response.body}');
+        throw Exception('API returned status ${response.statusCode}: ${response.body}');
+      }
+
+      final data = jsonDecode(response.body);
+      final content = data['candidates'][0]['content']['parts'][0]['text'] as String;
+      print('📝 Content received (${content.length} chars)');
+      
+      // Parse JSON from response
+      String cleanContent = content.trim();
+      cleanContent = cleanContent.replaceAll('```json', '').replaceAll('```', '').trim();
+      
+      final jsonMatch = RegExp(r'\[[\s\S]*\]').firstMatch(cleanContent);
+      if (jsonMatch != null) {
+        print('✅ Found JSON in response');
+        final itinerary = jsonDecode(jsonMatch.group(0)!) as List;
+        final result = itinerary.cast<Map<String, dynamic>>();
+        
+        print('📊 Generated ${result.length} days');
+        
+        // Store in cache
+        _itineraryCache[cacheKey] = result;
+        
+        print('✅ Successfully cached itinerary');
+        return result;
+      } else {
+        print('❌ No JSON found in response');
+        print('Response: $cleanContent');
+        throw Exception('No valid JSON found in AI response');
+      }
+    } catch (e, stackTrace) {
+      print('❌ Error generating itinerary: $e');
+      print('Stack trace: $stackTrace');
       return [];
     }
   }
@@ -117,19 +123,19 @@ Make sure coordinates are accurate for the actual locations.'''
     String tripId,
   ) async {
     try {
-      // Check if already exists
-      final existing = await supabase
-          .from('meeting_points')
-          .select()
-          .eq('trip_id', tripId);
+      print('🔍 Generating meeting points for: $location');
       
-      if (existing.isNotEmpty) {
-        return List<Map<String, dynamic>>.from(existing);
+      // Check cache first
+      if (_meetingPointsCache.containsKey(tripId)) {
+        print('✅ Found meeting points in cache');
+        return _meetingPointsCache[tripId]!;
       }
 
+      print('📡 Making API call to Gemini...');
+      
       // Generate with AI
       final response = await http.post(
-        Uri.parse('$_geminiApiUrl?key=$_geminiApiKey'),
+        Uri.parse('$_baseUrl?key=$_geminiApiKey'),
         headers: {
           'Content-Type': 'application/json',
         },
@@ -146,17 +152,18 @@ Include:
 - Major landmarks
 - Hotels/accommodation hubs
 
-Return ONLY valid JSON array with no markdown formatting:
+Return ONLY valid JSON array:
 [
   {
     "name": "Point Name",
     "description": "Brief description",
     "latitude": 0.0000,
     "longitude": 0.0000,
-    "icon_type": "airport|train|landmark|hotel"
+    "icon_type": "airport"
   }
 ]
 
+For icon_type use: airport, train, landmark, or hotel
 Coordinates must be accurate.'''
                 }
               ]
@@ -169,36 +176,38 @@ Coordinates must be accurate.'''
         }),
       );
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final content = data['candidates'][0]['content']['parts'][0]['text'] as String;
+      print('📥 Response status: ${response.statusCode}');
+      
+      if (response.statusCode != 200) {
+        print('❌ API Error: ${response.body}');
+        throw Exception('API returned status ${response.statusCode}');
+      }
+
+      final data = jsonDecode(response.body);
+      final content = data['candidates'][0]['content']['parts'][0]['text'] as String;
+      
+      String cleanContent = content.trim();
+      cleanContent = cleanContent.replaceAll('```json', '').replaceAll('```', '').trim();
+      
+      final jsonMatch = RegExp(r'\[[\s\S]*\]').firstMatch(cleanContent);
+      if (jsonMatch != null) {
+        print('✅ Found JSON in response');
+        final points = jsonDecode(jsonMatch.group(0)!) as List;
+        final result = points.cast<Map<String, dynamic>>();
         
-        String cleanContent = content.trim();
-        cleanContent = cleanContent.replaceAll('```json', '').replaceAll('```', '').trim();
+        print('📊 Generated ${result.length} meeting points');
         
-        final jsonMatch = RegExp(r'\[[\s\S]*\]').firstMatch(cleanContent);
-        if (jsonMatch != null) {
-          final points = jsonDecode(jsonMatch.group(0)!) as List;
-          
-          // Store in database
-          for (var point in points) {
-            await supabase.from('meeting_points').insert({
-              'trip_id': tripId,
-              'name': point['name'],
-              'description': point['description'],
-              'latitude': point['latitude'],
-              'longitude': point['longitude'],
-              'icon_type': point['icon_type'],
-            });
-          }
-          
-          return points.cast<Map<String, dynamic>>();
-        }
+        // Store in cache
+        _meetingPointsCache[tripId] = result;
+        
+        print('✅ Successfully cached meeting points');
+        return result;
       }
       
-      throw Exception('Failed to generate meeting points');
-    } catch (e) {
-      print('Error generating meeting points: $e');
+      throw Exception('No valid JSON found in response');
+    } catch (e, stackTrace) {
+      print('❌ Error generating meeting points: $e');
+      print('Stack trace: $stackTrace');
       return [];
     }
   }
@@ -206,21 +215,19 @@ Coordinates must be accurate.'''
   // Search for locations with AI assistance
   static Future<List<Map<String, dynamic>>> searchLocations(String query) async {
     try {
-      // Check cache first
-      final cached = await supabase
-          .from('location_suggestions')
-          .select()
-          .eq('query', query.toLowerCase())
-          .gt('expires_at', DateTime.now().toIso8601String())
-          .maybeSingle();
+      print('🔍 Searching for: $query');
       
-      if (cached != null) {
-        return List<Map<String, dynamic>>.from(cached['suggestions']);
+      // Check cache first
+      if (_locationCache.containsKey(query.toLowerCase())) {
+        print('✅ Found cached results');
+        return _locationCache[query.toLowerCase()]!;
       }
 
+      print('📡 Making API call to Gemini...');
+      
       // Search with AI
       final response = await http.post(
-        Uri.parse('$_geminiApiUrl?key=$_geminiApiKey'),
+        Uri.parse('$_baseUrl?key=$_geminiApiKey'),
         headers: {
           'Content-Type': 'application/json',
         },
@@ -233,17 +240,19 @@ Coordinates must be accurate.'''
 
 Provide 5-8 relevant results with accurate coordinates.
 
-Return ONLY valid JSON array with no markdown formatting:
+Return ONLY valid JSON array:
 [
   {
     "name": "Location Name",
     "address": "Full Address",
-    "category": "restaurant|attraction|hotel|nature|transport|other",
+    "category": "restaurant",
     "latitude": 0.0000,
     "longitude": 0.0000,
     "description": "Brief description"
   }
-]'''
+]
+
+For category use: restaurant, attraction, hotel, nature, transport, or other'''
                 }
               ]
             }
@@ -255,31 +264,45 @@ Return ONLY valid JSON array with no markdown formatting:
         }),
       );
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final content = data['candidates'][0]['content']['parts'][0]['text'] as String;
+      print('📥 Response status: ${response.statusCode}');
+      
+      if (response.statusCode != 200) {
+        print('❌ API Error: ${response.body}');
+        return [];
+      }
+
+      final data = jsonDecode(response.body);
+      final content = data['candidates'][0]['content']['parts'][0]['text'] as String;
+      
+      String cleanContent = content.trim();
+      cleanContent = cleanContent.replaceAll('```json', '').replaceAll('```', '').trim();
+      
+      final jsonMatch = RegExp(r'\[[\s\S]*\]').firstMatch(cleanContent);
+      if (jsonMatch != null) {
+        final suggestions = jsonDecode(jsonMatch.group(0)!) as List;
+        final result = suggestions.cast<Map<String, dynamic>>();
         
-        String cleanContent = content.trim();
-        cleanContent = cleanContent.replaceAll('```json', '').replaceAll('```', '').trim();
+        print('✅ Found ${result.length} locations');
         
-        final jsonMatch = RegExp(r'\[[\s\S]*\]').firstMatch(cleanContent);
-        if (jsonMatch != null) {
-          final suggestions = jsonDecode(jsonMatch.group(0)!) as List;
-          
-          // Cache the results
-          await supabase.from('location_suggestions').insert({
-            'query': query.toLowerCase(),
-            'suggestions': suggestions,
-          });
-          
-          return suggestions.cast<Map<String, dynamic>>();
-        }
+        // Cache the results
+        _locationCache[query.toLowerCase()] = result;
+        
+        return result;
       }
       
       return [];
-    } catch (e) {
-      print('Error searching locations: $e');
+    } catch (e, stackTrace) {
+      print('❌ Error searching locations: $e');
+      print('Stack trace: $stackTrace');
       return [];
     }
+  }
+  
+  // Clear all caches (useful for testing)
+  static void clearCache() {
+    _itineraryCache.clear();
+    _meetingPointsCache.clear();
+    _locationCache.clear();
+    print('🗑️ All caches cleared');
   }
 }
