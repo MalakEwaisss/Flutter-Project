@@ -5,12 +5,19 @@ import 'package:latlong2/latlong.dart';
 import '../config/config.dart';
 import '../widgets/custom_app_bar.dart';
 
-// Real location data for trips
+// ALL trip locations with accurate coordinates
 final Map<String, LatLng> tripLocations = {
-  '1': LatLng(-8.4095, 115.1889), // Bali, Indonesia
-  '2': LatLng(48.8566, 2.3522),   // Paris, France
-  '3': LatLng(46.8182, 8.2275),   // Swiss Alps
-  '4': LatLng(35.6762, 139.6503), // Tokyo, Japan
+  '1': LatLng(-8.4095, 115.1889),    // Bali, Indonesia
+  '2': LatLng(48.8566, 2.3522),      // Paris, France
+  '3': LatLng(46.8182, 8.2275),      // Swiss Alps, Switzerland
+  '4': LatLng(35.6762, 139.6503),    // Tokyo, Japan
+  '5': LatLng(29.9773, 31.1325),     // Giza, Egypt (Pyramids)
+  '6': LatLng(36.3932, 25.4615),     // Santorini, Greece
+  '7': LatLng(64.1466, -21.9426),    // Reykjavik, Iceland
+  '8': LatLng(25.2048, 55.2708),     // Dubai, UAE
+  '9': LatLng(4.1755, 73.5093),      // Maldives
+  '10': LatLng(40.7128, -74.0060),   // New York, USA
+  '11': LatLng(-3.4653, -62.2159),   // Manaus, Brazil (Amazon)
 };
 
 class MapOverviewScreen extends StatefulWidget {
@@ -199,87 +206,86 @@ class _RealMapView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Create markers for all trips
+    // Create markers for ALL trips
     final markers = allTrips.map((trip) {
       final location = tripLocations[trip['id']];
       if (location == null) return null;
       
       final isSelected = selectedTripId == trip['id'];
       
-     return Marker(
-  point: location,
-  width: isSelected ? 80 : 60,
-  height: isSelected ? 80 : 60,
-  alignment: Alignment.topCenter,
-  child: GestureDetector(
-    onTap: () => onMarkerTap(trip['id']),
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        AnimatedContainer(
-          duration: const Duration(milliseconds: 300),
-          width: isSelected ? 48 : 40,
-          height: isSelected ? 48 : 40,
-          decoration: BoxDecoration(
-            color: isSelected ? accentOrange : primaryBlue,
-            shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: (isSelected ? accentOrange : primaryBlue)
-                    .withOpacity(0.5),
-                blurRadius: isSelected ? 12 : 8,
-                spreadRadius: isSelected ? 4 : 2,
+      return Marker(
+        point: location,
+        width: isSelected ? 80 : 60,
+        height: isSelected ? 80 : 60,
+        alignment: Alignment.topCenter,
+        child: GestureDetector(
+          onTap: () => onMarkerTap(trip['id']),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                width: isSelected ? 48 : 40,
+                height: isSelected ? 48 : 40,
+                decoration: BoxDecoration(
+                  color: isSelected ? accentOrange : primaryBlue,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: (isSelected ? accentOrange : primaryBlue)
+                          .withOpacity(0.5),
+                      blurRadius: isSelected ? 12 : 8,
+                      spreadRadius: isSelected ? 4 : 2,
+                    ),
+                  ],
+                ),
+                child: Icon(
+                  Icons.location_on,
+                  color: Colors.white,
+                  size: isSelected ? 32 : 24,
+                ),
               ),
-            ],
-          ),
-          child: Icon(
-            Icons.location_on,
-            color: Colors.white,
-            size: isSelected ? 32 : 24,
-          ),
-        ),
-
-        if (isSelected) ...[
-          const SizedBox(height: 4),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(6),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.2),
-                  blurRadius: 4,
+              if (isSelected) ...[
+                const SizedBox(height: 4),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(6),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.2),
+                        blurRadius: 4,
+                      ),
+                    ],
+                  ),
+                  child: Text(
+                    trip['location'].split(',').first,
+                    style: const TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: primaryBlue,
+                    ),
+                  ),
                 ),
               ],
-            ),
-            child: Text(
-              trip['location'],
-              style: const TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.bold,
-                color: primaryBlue,
-              ),
-            ),
+            ],
           ),
-        ],
-      ],
-    ),
-  ),
-);
+        ),
+      );
     }).whereType<Marker>().toList();
 
     return FlutterMap(
       mapController: mapController,
       options: MapOptions(
-        center: LatLng(25.0, 50.0), // Center of the world view
-        zoom: 2.5,
-        minZoom: 2.0,
+        initialCenter: LatLng(20.0, 0.0), // Center of the world
+        initialZoom: 2.0,
+        minZoom: 1.5,
         maxZoom: 18.0,
         interactiveFlags: InteractiveFlag.all,
       ),
       children: [
-        // OpenStreetMap tile layer (free, no API key needed!)
+        // OpenStreetMap tile layer
         TileLayer(
           urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
           userAgentPackageName: 'com.travelhub.app',
@@ -291,12 +297,12 @@ class _RealMapView extends StatelessWidget {
           markers: markers,
         ),
         
-        // Map attribution (required by OpenStreetMap)
+        // Map attribution
         RichAttributionWidget(
           attributions: [
             TextSourceAttribution(
               'OpenStreetMap contributors',
-              onTap: () {}, // Can open OSM website
+              onTap: () {},
             ),
           ],
         ),
@@ -325,21 +331,43 @@ class _TripsList extends StatelessWidget {
       controller: scrollController,
       padding: const EdgeInsets.all(16),
       children: [
-        const Text(
-          'Trip Locations',
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-            color: primaryBlue,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          '${allTrips.length} destinations available',
-          style: const TextStyle(
-            fontSize: 14,
-            color: subtitleColor,
-          ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Trip Locations',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: primaryBlue,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '${allTrips.length} destinations available',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: subtitleColor,
+                  ),
+                ),
+              ],
+            ),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: accentOrange.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.map,
+                color: accentOrange,
+                size: 24,
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 20),
         ...allTrips.map((trip) {
