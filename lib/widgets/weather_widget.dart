@@ -16,7 +16,7 @@ class WeatherWidget extends StatefulWidget {
 
 class _WeatherWidgetState extends State<WeatherWidget> {
   // Read from .env file
-  static final String _apiKey = dotenv.env['WEATHER_API_KEY'] ?? '';
+  static final String _apiKey = dotenv.env["WEATHER_API_KEY"] ?? '';
   static const String _baseUrl = 'https://api.openweathermap.org/data/2.5/weather';
 
   Future<Map<String, dynamic>> fetchWeather() async {
