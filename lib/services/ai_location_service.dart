@@ -1,41 +1,54 @@
-// lib/services/ai_location_service.dart
 import 'dart:convert';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
+import '../main.dart'; 
 
 class AILocationService {
-  // FIXED: Using gemini-2.5-flash which is available and stable
-  static const String _geminiApiKey = 'AIzaSyDCn7RWZpe1pJvtEuo7Emtj8axM2SeHcyw';
+  static final String _geminiApiKey = dotenv.env["GEMINI_API_KEY"] ?? '';
   static const String _baseUrl = 'https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent';
   
-  // In-memory cache for generated data
   static final Map<String, List<Map<String, dynamic>>> _itineraryCache = {};
   static final Map<String, List<Map<String, dynamic>>> _meetingPointsCache = {};
-  static final Map<String, List<Map<String, dynamic>>> _locationCache = {};
   
-  // Generate itinerary for a trip
+  /// Generate itinerary for a trip (with Supabase persistence)
   static Future<List<Map<String, dynamic>>> generateItinerary(
     String tripTitle,
     String location,
     int days,
   ) async {
     try {
+      final String tripId = tripTitle.replaceAll(' ', '_').toLowerCase();
       final cacheKey = '${tripTitle}_${location}_$days';
-      print('🔍 Generating itinerary for: $tripTitle in $location ($days days)');
-      
-      // Check cache first
       if (_itineraryCache.containsKey(cacheKey)) {
-        print('✅ Found itinerary in cache');
         return _itineraryCache[cacheKey]!;
       }
 
-      print('📡 Making API call to Gemini...');
-      
-      // FIXED: Removed the v1beta from URL and using correct endpoint
+      final existingData = await supabase
+          .from('trip_itineraries')
+          .select()
+          .eq('trip_id', tripId)
+          .order('day', ascending: true);
+
+      if (existingData.isNotEmpty) {
+        final result = (existingData as List).map((item) {
+          return {
+            'day': item['day'],
+            'title': item['title'],
+            'description': item['description'],
+            'latitude': double.parse(item['latitude'].toString()),
+            'longitude': double.parse(item['longitude'].toString()),
+            'activities': List<String>.from(jsonDecode(item['activities'])),
+            'time': item['time'],
+          };
+        }).toList();
+        
+        _itineraryCache[cacheKey] = result;
+        return result;
+      }
+
       final response = await http.post(
         Uri.parse('$_baseUrl?key=$_geminiApiKey'),
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'contents': [
             {
@@ -75,116 +88,90 @@ Make sure coordinates are accurate for the actual locations.'''
           }
         }),
       );
-
-      print('📥 Response status: ${response.statusCode}');
       
-      if (response.statusCode != 200) {
-        print('❌ API Error: ${response.body}');
-        throw Exception('API returned status ${response.statusCode}: ${response.body}');
+      List<Map<String, dynamic>> result = [];
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final content = data['candidates'][0]['content']['parts'][0]['text'] as String;
+        
+        String cleanContent = content.trim();
+        cleanContent = cleanContent.replaceAll('```json', '').replaceAll('```', '').trim();
+        
+        final jsonMatch = RegExp(r'\[[\s\S]*\]').firstMatch(cleanContent);
+        if (jsonMatch != null) {
+          try {
+            final itinerary = jsonDecode(jsonMatch.group(0)!) as List;
+            result = itinerary.cast<Map<String, dynamic>>();
+          } catch (e) {
+            result = _getFallbackItinerary(location, days);
+          }
+        } else {
+          result = _getFallbackItinerary(location, days);
+        }
+      } else {
+        result = _getFallbackItinerary(location, days);
       }
 
-      final data = jsonDecode(response.body);
-      final content = data['candidates'][0]['content']['parts'][0]['text'] as String;
-      print('📝 Content received (${content.length} chars)');
-      
-      // Parse JSON from response
-      String cleanContent = content.trim();
-      cleanContent = cleanContent.replaceAll('```json', '').replaceAll('```', '').trim();
-      
-      final jsonMatch = RegExp(r'\[[\s\S]*\]').firstMatch(cleanContent);
-      if (jsonMatch != null) {
+      for (final dayData in result) {
         try {
-          print('✅ Found JSON in response');
-          final itinerary = jsonDecode(jsonMatch.group(0)!) as List;
-          final result = itinerary.cast<Map<String, dynamic>>();
-          
-          print('📊 Generated ${result.length} days');
-          
-          // Store in cache
-          _itineraryCache[cacheKey] = result;
-          
-          print('✅ Successfully cached itinerary');
-          return result;
+          await supabase.from('trip_itineraries').insert({
+            'trip_id': tripId,
+            'day': dayData['day'],
+            'title': dayData['title'],
+            'description': dayData['description'],
+            'latitude': dayData['latitude'],
+            'longitude': dayData['longitude'],
+            'activities': jsonEncode(dayData['activities']),
+            'time': dayData['time'],
+          });
         } catch (e) {
-          print('❌ JSON parse error: $e');
-          print('Problematic JSON: ${jsonMatch.group(0)}');
+          // Handle error silently or log it
         }
       }
       
-      print('⚠️ No valid JSON found, returning fallback itinerary');
-      final fallbackData = _getFallbackItinerary(location, days);
-      _itineraryCache[cacheKey] = fallbackData;
-      return fallbackData;
-    } catch (e, stackTrace) {
-      print('❌ Error generating itinerary: $e');
-      print('Stack trace: $stackTrace');
+      _itineraryCache[cacheKey] = result;
       
-      // Return fallback itinerary instead of empty array
+      return result;
+    } catch (e, stackTrace) {
       return _getFallbackItinerary(location, days);
     }
   }
 
-  // Fallback itinerary when API fails
-  static List<Map<String, dynamic>> _getFallbackItinerary(String location, int days) {
-    final city = location.split(',').first.trim();
-    final result = <Map<String, dynamic>>[];
-    
-    // Base coordinates for the location
-    double baseLat = 0.0;
-    double baseLng = 0.0;
-    
-    if (city.toLowerCase().contains('bali')) {
-      baseLat = -8.4095;
-      baseLng = 115.1889;
-    } else if (city.toLowerCase().contains('paris')) {
-      baseLat = 48.8566;
-      baseLng = 2.3522;
-    } else if (city.toLowerCase().contains('tokyo')) {
-      baseLat = 35.6762;
-      baseLng = 139.6503;
-    }
-    
-    for (int i = 1; i <= days; i++) {
-      result.add({
-        'day': i,
-        'title': 'Day $i - Explore $city',
-        'description': 'Discover the best of $city on day $i',
-        'latitude': baseLat + (i * 0.01),
-        'longitude': baseLng + (i * 0.01),
-        'activities': [
-          'Visit local attractions',
-          'Try local cuisine',
-          'Explore the city',
-          'Shopping and leisure'
-        ],
-        'time': '9:00 AM - 6:00 PM'
-      });
-    }
-    
-    return result;
-  }
-
-  // Generate meeting points for a trip
+  /// Generate meeting points for a trip (with Supabase persistence)
   static Future<List<Map<String, dynamic>>> generateMeetingPoints(
     String location,
     String tripId,
   ) async {
     try {
-      print('🔍 Generating meeting points for: $location');
-      
-      // Check cache first
       if (_meetingPointsCache.containsKey(tripId)) {
-        print('✅ Found meeting points in cache');
         return _meetingPointsCache[tripId]!;
       }
 
-      print('📡 Making API call to Gemini...');
-      
+      final existingData = await supabase
+          .from('meeting_points')
+          .select()
+          .eq('trip_id', tripId);
+
+      if (existingData.isNotEmpty) {
+        final result = (existingData as List).map((item) {
+          return {
+            'id': item['id'].toString(),
+            'name': item['name'],
+            'description': item['description'],
+            'latitude': double.parse(item['latitude'].toString()),
+            'longitude': double.parse(item['longitude'].toString()),
+            'icon_type': item['icon_type'],
+          };
+        }).toList();
+        
+        _meetingPointsCache[tripId] = result;
+        return result;
+      }
+
       final response = await http.post(
         Uri.parse('$_baseUrl?key=$_geminiApiKey'),
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'contents': [
             {
@@ -221,145 +208,74 @@ Coordinates must be accurate.'''
           }
         }),
       );
-
-      print('📥 Response status: ${response.statusCode}');
       
-      if (response.statusCode != 200) {
-        print('❌ API Error: ${response.body}');
-        throw Exception('API returned status ${response.statusCode}');
+      List<Map<String, dynamic>> result = [];
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final content = data['candidates'][0]['content']['parts'][0]['text'] as String;
+        
+        String cleanContent = content.trim();
+        cleanContent = cleanContent.replaceAll('```json', '').replaceAll('```', '').trim();
+        
+        final jsonMatch = RegExp(r'\[[\s\S]*\]').firstMatch(cleanContent);
+        if (jsonMatch != null) {
+          try {
+            final points = jsonDecode(jsonMatch.group(0)!) as List;
+            result = points.cast<Map<String, dynamic>>();
+          } catch (e) {
+            result = _getFallbackMeetingPoints(location);
+          }
+        } else {
+          result = _getFallbackMeetingPoints(location);
+        }
+      } else {
+        result = _getFallbackMeetingPoints(location);
       }
 
-      final data = jsonDecode(response.body);
-      final content = data['candidates'][0]['content']['parts'][0]['text'] as String;
-      print('📝 Raw content: $content');
-      
-      String cleanContent = content.trim();
-      cleanContent = cleanContent.replaceAll('```json', '').replaceAll('```', '').trim();
-      
-      // Try multiple JSON extraction patterns
-      final jsonMatch = RegExp(r'\[[\s\S]*\]').firstMatch(cleanContent);
-      if (jsonMatch != null) {
+      for (final point in result) {
         try {
-          print('✅ Found JSON in response');
-          final points = jsonDecode(jsonMatch.group(0)!) as List;
-          final result = points.cast<Map<String, dynamic>>();
-          
-          print('📊 Generated ${result.length} meeting points');
-          
-          // Add IDs to each point
-          for (int i = 0; i < result.length; i++) {
-            result[i]['id'] = '${tripId}_mp_$i';
-          }
-          
-          // Store in cache
-          _meetingPointsCache[tripId] = result;
-          
-          print('✅ Successfully cached meeting points');
-          return result;
+          await supabase.from('meeting_points').insert({
+            'trip_id': tripId,
+            'name': point['name'],
+            'description': point['description'],
+            'latitude': point['latitude'],
+            'longitude': point['longitude'],
+            'icon_type': point['icon_type'],
+          });
         } catch (e) {
-          print('❌ JSON parse error: $e');
-          print('Problematic JSON: ${jsonMatch.group(0)}');
+          // Handle error silently or log it
         }
       }
       
-      // If no JSON found, return default fallback data
-      print('⚠️ No valid JSON found, returning fallback data');
-      final fallbackData = _getFallbackMeetingPoints(location);
-      _meetingPointsCache[tripId] = fallbackData;
-      return fallbackData;
-    } catch (e, stackTrace) {
-      print('❌ Error generating meeting points: $e');
-      print('Stack trace: $stackTrace');
+      _meetingPointsCache[tripId] = result;
       
-      // Return fallback data instead of empty array
+      return result;
+    } catch (e, stackTrace) {
       return _getFallbackMeetingPoints(location);
     }
   }
 
-  // Fallback meeting points when API fails
-  static List<Map<String, dynamic>> _getFallbackMeetingPoints(String location) {
-    // Extract city name from location
-    final city = location.split(',').first.trim().toLowerCase();
-    
-    // Default coordinates (will be overridden for known cities)
-    double lat = 0.0;
-    double lng = 0.0;
-    
-    // Known city coordinates
-    if (city.contains('bali')) {
-      lat = -8.4095;
-      lng = 115.1889;
-    } else if (city.contains('paris')) {
-      lat = 48.8566;
-      lng = 2.3522;
-    } else if (city.contains('tokyo')) {
-      lat = 35.6762;
-      lng = 139.6503;
-    } else if (city.contains('new york')) {
-      lat = 40.7128;
-      lng = -74.0060;
-    } else if (city.contains('london')) {
-      lat = 51.5074;
-      lng = -0.1278;
-    } else if (city.contains('dubai')) {
-      lat = 25.2048;
-      lng = 55.2708;
-    }
-    
-    return [
-      {
-        'id': 'mp_1',
-        'name': '$location International Airport',
-        'description': 'Main international airport',
-        'latitude': lat + 0.05,
-        'longitude': lng + 0.05,
-        'icon_type': 'airport'
-      },
-      {
-        'id': 'mp_2',
-        'name': '$location Central Station',
-        'description': 'Main train station',
-        'latitude': lat - 0.02,
-        'longitude': lng + 0.02,
-        'icon_type': 'train'
-      },
-      {
-        'id': 'mp_3',
-        'name': 'City Center',
-        'description': 'Downtown area',
-        'latitude': lat,
-        'longitude': lng,
-        'icon_type': 'landmark'
-      },
-      {
-        'id': 'mp_4',
-        'name': 'Main Hotel District',
-        'description': 'Popular hotel area',
-        'latitude': lat + 0.01,
-        'longitude': lng - 0.01,
-        'icon_type': 'hotel'
-      },
-    ];
-  }
-
-  // Search for locations with AI assistance
+  /// Search for locations with AI assistance (with Supabase caching)
   static Future<List<Map<String, dynamic>>> searchLocations(String query) async {
     try {
-      print('🔍 Searching for: $query');
-      
-      // Check cache first
-      if (_locationCache.containsKey(query.toLowerCase())) {
-        print('✅ Found cached results');
-        return _locationCache[query.toLowerCase()]!;
+      final cachedData = await supabase
+          .from('location_suggestions')
+          .select()
+          .eq('query', query.toLowerCase())
+          .gt('expires_at', DateTime.now().toIso8601String())
+          .maybeSingle();
+
+      if (cachedData != null) {
+        final suggestions = List<Map<String, dynamic>>.from(
+          jsonDecode(cachedData['suggestions'])
+        );
+        return suggestions;
       }
 
-      print('📡 Making API call to Gemini...');
-      
       final response = await http.post(
         Uri.parse('$_baseUrl?key=$_geminiApiKey'),
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'contents': [
             {
@@ -392,11 +308,8 @@ For category use: restaurant, attraction, hotel, nature, transport, or other'''
           }
         }),
       );
-
-      print('📥 Response status: ${response.statusCode}');
       
       if (response.statusCode != 200) {
-        print('❌ API Error: ${response.body}');
         return [];
       }
 
@@ -411,27 +324,175 @@ For category use: restaurant, attraction, hotel, nature, transport, or other'''
         final suggestions = jsonDecode(jsonMatch.group(0)!) as List;
         final result = suggestions.cast<Map<String, dynamic>>();
         
-        print('✅ Found ${result.length} locations');
-        
-        // Cache the results
-        _locationCache[query.toLowerCase()] = result;
+        try {
+          await supabase.from('location_suggestions').insert({
+            'query': query.toLowerCase(),
+            'suggestions': jsonEncode(result),
+          });
+        } catch (e) {
+        }
         
         return result;
       }
       
       return [];
     } catch (e, stackTrace) {
-      print('❌ Error searching locations: $e');
-      print('Stack trace: $stackTrace');
       return [];
     }
   }
+
+  // Fallback itinerary when API fails
+  static List<Map<String, dynamic>> _getFallbackItinerary(String location, int days) {
+    final city = location.split(',').first.trim();
+    final result = <Map<String, dynamic>>[];
+    
+    double baseLat = 0.0;
+    double baseLng = 0.0;
+    
+    if (city.toLowerCase().contains('bali')) {
+      baseLat = -8.4095;
+      baseLng = 115.1889;
+    } else if (city.toLowerCase().contains('paris')) {
+      baseLat = 48.8566;
+      baseLng = 2.3522;
+    } else if (city.toLowerCase().contains('tokyo')) {
+      baseLat = 35.6762;
+      baseLng = 139.6503;
+    } else if (city.toLowerCase().contains('new york')) {
+      baseLat = 40.7128;
+      baseLng = -74.0060;
+    }
+    
+    for (int i = 1; i <= days; i++) {
+      result.add({
+        'day': i,
+        'title': 'Day $i - Explore $city',
+        'description': 'Discover the best of $city on day $i',
+        'latitude': baseLat + (i * 0.01),
+        'longitude': baseLng + (i * 0.01),
+        'activities': [
+          'Visit local attractions',
+          'Try local cuisine',
+          'Explore the city',
+          'Shopping and leisure'
+        ],
+        'time': '9:00 AM - 6:00 PM'
+      });
+    }
+    
+    return result;
+  }
+
+  // Fallback meeting points when API fails
+  static List<Map<String, dynamic>> _getFallbackMeetingPoints(String location) {
+    final city = location.split(',').first.trim().toLowerCase();
+    
+    double lat = 0.0;
+    double lng = 0.0;
+    
+    if (city.contains('bali')) {
+      lat = -8.4095;
+      lng = 115.1889;
+    } else if (city.contains('paris')) {
+      lat = 48.8566;
+      lng = 2.3522;
+    } else if (city.contains('tokyo')) {
+      lat = 35.6762;
+      lng = 139.6503;
+    } else if (city.contains('new york')) {
+      lat = 40.7128;
+      lng = -74.0060;
+    } else if (city.contains('dubai')) {
+      lat = 25.2048;
+      lng = 55.2708;
+    }
+    
+    return [
+      {
+        'name': '$location International Airport',
+        'description': 'Main international airport',
+        'latitude': lat + 0.05,
+        'longitude': lng + 0.05,
+        'icon_type': 'airport'
+      },
+      {
+        'name': '$location Central Station',
+        'description': 'Main train station',
+        'latitude': lat - 0.02,
+        'longitude': lng + 0.02,
+        'icon_type': 'train'
+      },
+      {
+        'name': 'City Center',
+        'description': 'Downtown area',
+        'latitude': lat,
+        'longitude': lng,
+        'icon_type': 'landmark'
+      },
+      {
+        'name': 'Main Hotel District',
+        'description': 'Popular hotel area',
+        'latitude': lat + 0.01,
+        'longitude': lng - 0.01,
+        'icon_type': 'hotel'
+      },
+    ];
+  }
   
-  // Clear all caches (useful for testing)
-  static void clearCache() {
+  /// Clear all caches (useful for testing or refreshing data)
+  static Future<void> clearAllCaches() async {
     _itineraryCache.clear();
     _meetingPointsCache.clear();
-    _locationCache.clear();
-    print('🗑️ All caches cleared');
+  }
+  
+  /// Delete expired location suggestions (run periodically)
+  static Future<void> cleanupExpiredSuggestions() async {
+    try {
+      await supabase
+          .from('location_suggestions')
+          .delete()
+          .lt('expires_at', DateTime.now().toIso8601String());
+    } catch (e) {
+    }
+  }
+  
+  /// Regenerate itinerary (force refresh)
+  static Future<List<Map<String, dynamic>>> regenerateItinerary(
+    String tripTitle,
+    String location,
+    int days,
+  ) async {
+    final String tripId = tripTitle.replaceAll(' ', '_').toLowerCase();
+    
+    try {
+      await supabase
+          .from('trip_itineraries')
+          .delete()
+          .eq('trip_id', tripId);
+    } catch (e) {
+    }
+    
+    final cacheKey = '${tripTitle}_${location}_$days';
+    _itineraryCache.remove(cacheKey);
+    
+    return generateItinerary(tripTitle, location, days);
+  }
+  
+  /// Regenerate meeting points (force refresh)
+  static Future<List<Map<String, dynamic>>> regenerateMeetingPoints(
+    String location,
+    String tripId,
+  ) async {
+    try {
+      await supabase
+          .from('meeting_points')
+          .delete()
+          .eq('trip_id', tripId);
+    } catch (e) {
+    }
+    
+    _meetingPointsCache.remove(tripId);
+    
+    return generateMeetingPoints(location, tripId);
   }
 }
