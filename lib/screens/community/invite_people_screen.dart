@@ -23,6 +23,7 @@ class _InvitePeopleScreenState extends State<InvitePeopleScreen> {
   List<UserProfile> _displayedUsers = [];
   String _searchQuery = '';
   bool _isInviting = false;
+  bool _isLoadingUsers = true;
 
   @override
   void initState() {
@@ -36,21 +37,35 @@ class _InvitePeopleScreenState extends State<InvitePeopleScreen> {
     super.dispose();
   }
 
-  void _loadUsers() {
+  // UPDATED METHOD - Load users from Firebase
+  void _loadUsers() async {
+    setState(() => _isLoadingUsers = true);
+    
     final provider = Provider.of<CommunityProvider>(context, listen: false);
+    await provider.loadSuggestedUsers(excludeGroupId: widget.group.id);
+    
     setState(() {
       _displayedUsers = provider.suggestedUsers;
+      _isLoadingUsers = false;
     });
   }
 
-  void _searchUsers(String query) {
+  // UPDATED METHOD - Search users from Firebase
+  void _searchUsers(String query) async {
     setState(() {
       _searchQuery = query;
+      _isLoadingUsers = true;
     });
 
     final provider = Provider.of<CommunityProvider>(context, listen: false);
+    final results = await provider.searchUsers(
+      query,
+      excludeGroupId: widget.group.id,
+    );
+    
     setState(() {
-      _displayedUsers = provider.searchUsers(query);
+      _displayedUsers = results;
+      _isLoadingUsers = false;
     });
   }
 
@@ -63,6 +78,11 @@ class _InvitePeopleScreenState extends State<InvitePeopleScreen> {
     setState(() => _isInviting = false);
 
     if (success && mounted) {
+      // Remove the invited user from the list
+      setState(() {
+        _displayedUsers.removeWhere((u) => u.id == user.id);
+      });
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('${user.name} has been invited to the group'),
@@ -191,7 +211,7 @@ class _InvitePeopleScreenState extends State<InvitePeopleScreen> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                if (_displayedUsers.isNotEmpty)
+                if (!_isLoadingUsers && _displayedUsers.isNotEmpty)
                   Text(
                     '${_displayedUsers.length} ${_displayedUsers.length == 1 ? 'user' : 'users'}',
                     style: const TextStyle(
@@ -206,32 +226,16 @@ class _InvitePeopleScreenState extends State<InvitePeopleScreen> {
 
           // Users List
           Expanded(
-            child: _displayedUsers.isEmpty
-                ? Center(
+            child: _isLoadingUsers
+                ? const Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(
-                          Icons.person_search,
-                          size: 60,
-                          color: Colors.grey.shade400,
-                        ),
-                        const SizedBox(height: 16),
+                        CircularProgressIndicator(),
+                        SizedBox(height: 16),
                         Text(
-                          _searchQuery.isEmpty
-                              ? 'No users available'
-                              : 'No users found',
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          _searchQuery.isEmpty
-                              ? 'Check back later for suggestions'
-                              : 'Try a different search term',
-                          style: const TextStyle(
+                          'Loading users...',
+                          style: TextStyle(
                             fontSize: 14,
                             color: subtitleColor,
                           ),
@@ -239,18 +243,51 @@ class _InvitePeopleScreenState extends State<InvitePeopleScreen> {
                       ],
                     ),
                   )
-                : ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    itemCount: _displayedUsers.length,
-                    itemBuilder: (context, index) {
-                      final user = _displayedUsers[index];
-                      return InviteUserTile(
-                        user: user,
-                        onInvite: () => _inviteUser(user),
-                        isInviting: _isInviting,
-                      );
-                    },
-                  ),
+                : _displayedUsers.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.person_search,
+                              size: 60,
+                              color: Colors.grey.shade400,
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              _searchQuery.isEmpty
+                                  ? 'No users available'
+                                  : 'No users found',
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              _searchQuery.isEmpty
+                                  ? 'All users are already members'
+                                  : 'Try a different search term',
+                              style: const TextStyle(
+                                fontSize: 14,
+                                color: subtitleColor,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    : ListView.builder(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        itemCount: _displayedUsers.length,
+                        itemBuilder: (context, index) {
+                          final user = _displayedUsers[index];
+                          return InviteUserTile(
+                            user: user,
+                            onInvite: () => _inviteUser(user),
+                            isInviting: _isInviting,
+                          );
+                        },
+                      ),
           ),
         ],
       ),
