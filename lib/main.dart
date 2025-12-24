@@ -23,6 +23,8 @@ import 'screens/onboarding/onboarding_screen.dart';
 import 'screens/search/trip_search_screen.dart';
 import 'screens/search/filters_screen.dart';
 import 'screens/search/search_results.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 
 class SmoothScrollBehavior extends ScrollBehavior {
   @override
@@ -46,13 +48,16 @@ Future<void> main() async {
     debugPrint("Error loading .env file: $e");
   }
 
-  // Initializing with your provided credentials
+// Initializing with your provided credentials
   await Supabase.initialize(
     url: 'https://jofcdkdoxhkjejgkdrbk.supabase.co',
     anonKey:
         'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpvZmNka2RveGhramVqZ2tkcmJrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU5MzY1ODIsImV4cCI6MjA4MTUxMjU4Mn0.z3gUMnRDFNp3zvxaXd1jXyZa-CwINR43KIQOBJa66TQ',
   );
-
+ // Initialize Firebase for Community feature
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
  runApp(
     MultiProvider(
       providers: [

@@ -6,6 +6,7 @@ import 'package:flutter_application_1/config/trip_data.dart';
 import 'package:flutter_application_1/models/group_member.dart';
 import 'package:flutter_application_1/models/group_model.dart';
 import 'package:flutter_application_1/providers/community_provider.dart';
+import 'package:flutter_application_1/services/firebase_community_service.dart';
 import 'package:provider/provider.dart';
 
 class CreateGroupScreen extends StatefulWidget {
@@ -50,30 +51,20 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
 
     final provider = Provider.of<CommunityProvider>(context, listen: false);
     
-    final newGroup = TripGroup(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      groupName: _groupNameController.text.trim(),
-      tripId: _selectedTrip!['id'],
-      tripName: _selectedTrip!['title'],
-      destination: _selectedTrip!['location'],
-      tripDate: _selectedTrip!['date'],
-      description: _descriptionController.text.trim(),
-      ownerId: 'current_user',
-      ownerName: 'Current User',
-      createdAt: DateTime.now().toIso8601String(),
-      groupImage: _selectedTrip!['image'],
-      members: [
-        GroupMember(
-          id: 'm1',
-          userId: 'current_user',
-          userName: 'Current User',
-          userEmail: 'user@example.com',
-          role: 'owner',
-          joinedAt: DateTime.now().toIso8601String(),
-        ),
-      ],
-    );
-
+   final newGroup = TripGroup(
+  id: DateTime.now().millisecondsSinceEpoch.toString(),
+  groupName: _groupNameController.text.trim(),
+  tripId: _selectedTrip!['id'],
+  tripName: _selectedTrip!['title'],
+  destination: _selectedTrip!['location'],
+  tripDate: _selectedTrip!['date'],
+  description: _descriptionController.text.trim(),
+  ownerId: FirebaseCommunityService.currentUserId ?? '',
+  ownerName: FirebaseCommunityService.currentUserName,
+  createdAt: DateTime.now().toIso8601String(),
+  groupImage: _selectedTrip!['image'],
+  members: [], // Will be added automatically in Firebase
+);
     final success = await provider.createGroup(newGroup);
 
     setState(() => _isCreating = false);

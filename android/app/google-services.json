@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "903844481076",
+    "project_id": "trivo-e78fe",
+    "storage_bucket": "trivo-e78fe.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:903844481076:android:82c51f25f9c995d650e261",
+        "android_client_info": {
+          "package_name": "com.example.flutter_application_1"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBKo5T7ijK5XKfeKMFNnq5_1XW3GoTfOSM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
