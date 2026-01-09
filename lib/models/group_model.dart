@@ -13,6 +13,7 @@ class TripGroup {
   final List<GroupMember> members;
   final String createdAt;
   final String? groupImage;
+  final bool isPublic; // NEW: public or private group
 
   TripGroup({
     required this.id,
@@ -27,6 +28,7 @@ class TripGroup {
     required this.members,
     required this.createdAt,
     this.groupImage,
+    this.isPublic = true, // Default to public
   });
 
   int get memberCount => members.length;
@@ -48,6 +50,7 @@ class TripGroup {
           [],
       createdAt: json['created_at'],
       groupImage: json['group_image'],
+      isPublic: json['is_public'] ?? true,
     );
   }
 
@@ -63,6 +66,7 @@ class TripGroup {
       'owner_name': ownerName,
       'created_at': createdAt,
       'group_image': groupImage,
+      'is_public': isPublic,
     };
   }
 }

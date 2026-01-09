@@ -3,7 +3,7 @@ import 'package:flutter_application_1/models/group_model.dart';
 import 'package:provider/provider.dart';
 import '../../config/config.dart';
 import '../../providers/community_provider.dart';
-import '../../widgets/community/group_card.dart';
+import '../../widgets/community/group_card_updated.dart';
 import '../../widgets/community/empty_state_widget.dart';
 import 'create_group_screen.dart';
 import 'group_members_screen.dart';
@@ -103,7 +103,9 @@ class _CommunityScreenState extends State<CommunityScreen> {
             return EmptyStateWidget(
               icon: Icons.groups_outlined,
               title: 'No Groups Yet',
-              subtitle: 'Create or join a group to connect with fellow travelers',
+              subtitle: provider.showPublicOnly
+                  ? 'Create or join a group to connect with fellow travelers'
+                  : 'You haven\'t joined any groups yet',
               buttonText: 'Create Your First Group',
               onButtonPressed: _navigateToCreateGroup,
             );
@@ -156,6 +158,37 @@ class _CommunityScreenState extends State<CommunityScreen> {
                             ),
                           ],
                         ),
+                        const SizedBox(height: 16),
+                        // NEW: Public/Private Toggle
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildFilterChip(
+                                label: 'Public Groups',
+                                icon: Icons.public,
+                                isSelected: provider.showPublicOnly,
+                                onTap: () {
+                                  if (!provider.showPublicOnly) {
+                                    provider.toggleGroupVisibility();
+                                  }
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: _buildFilterChip(
+                                label: 'My Groups',
+                                icon: Icons.lock,
+                                isSelected: !provider.showPublicOnly,
+                                onTap: () {
+                                  if (provider.showPublicOnly) {
+                                    provider.toggleGroupVisibility();
+                                  }
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
                       ],
                     ),
                   ),
@@ -175,6 +208,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
                         return GroupCard(
                           group: group,
                           onTap: () => _navigateToGroupMembers(group),
+                          showVisibilityBadge: true,
                         );
                       },
                       childCount: provider.groups.length,
@@ -196,6 +230,50 @@ class _CommunityScreenState extends State<CommunityScreen> {
         label: const Text(
           'Create Group',
           style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFilterChip({
+    required String label,
+    required IconData icon,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? primaryBlue
+              : Theme.of(context).cardColor,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected ? primaryBlue : Colors.grey.shade300,
+            width: 2,
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              color: isSelected ? Colors.white : primaryBlue,
+              size: 20,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                color: isSelected ? Colors.white : primaryBlue,
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+              ),
+            ),
+          ],
         ),
       ),
     );
