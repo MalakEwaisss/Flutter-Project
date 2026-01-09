@@ -23,12 +23,60 @@ class GroupMembersScreen extends StatefulWidget {
 class _GroupMembersScreenState extends State<GroupMembersScreen> {
   String? _currentUserId;
   bool _isOwner = false;
+  bool _isMember = false;
+  bool _hasRequestedToJoin = false;
 
   @override
   void initState() {
     super.initState();
     _currentUserId = supabase.auth.currentUser?.id;
     _isOwner = widget.group.ownerId == _currentUserId;
+    _isMember = widget.group.members.any((m) => m.userId == _currentUserId);
+    _checkJoinRequestStatus();
+  }
+
+  Future<void> _checkJoinRequestStatus() async {
+    if (_currentUserId == null || _isMember || _isOwner) return;
+    
+    try {
+      final request = await supabase
+          .from('join_requests')
+          .select()
+          .eq('group_id', widget.group.id)
+          .eq('user_id', _currentUserId!)
+          .eq('status', 'pending')
+          .maybeSingle();
+      
+      setState(() {
+        _hasRequestedToJoin = request != null;
+      });
+    } catch (e) {
+      debugPrint('Error checking join request: $e');
+    }
+  }
+
+  Future<void> _requestToJoinGroup() async {
+    final provider = Provider.of<CommunityProvider>(context, listen: false);
+    final success = await provider.requestToJoinGroup(widget.group.id, widget.group);
+    
+    if (success && mounted) {
+      setState(() {
+        _hasRequestedToJoin = true;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Join request sent! Waiting for owner approval.'),
+          backgroundColor: successGreen,
+        ),
+      );
+    } else if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(provider.error ?? 'Failed to send join request'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   Future<void> _removeMember(GroupMember member) async {
@@ -70,7 +118,6 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
             backgroundColor: successGreen,
           ),
         );
-        // Reload group data
         Navigator.pop(context);
       } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -90,7 +137,6 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
         builder: (context) => InvitePeopleScreen(group: widget.group),
       ),
     ).then((_) {
-      // Reload when returning
       Navigator.pop(context);
     });
   }
@@ -183,7 +229,7 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
                       Text(
                         isPublic
                             ? 'Anyone can see and join this group'
-                            : 'Only visible to all, but people need to request to join',
+                            : 'Visible to all, but requires approval to join',
                         style: const TextStyle(
                           fontSize: 12,
                           color: subtitleColor,
@@ -230,7 +276,14 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
             backgroundColor: successGreen,
           ),
         );
-        Navigator.pop(context); // Go back to refresh
+        Navigator.pop(context);
+      } else if (mounted && provider.error != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(provider.error!),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     }
   }
@@ -274,7 +327,7 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
             backgroundColor: successGreen,
           ),
         );
-        Navigator.pop(context); // Go back to community screen
+        Navigator.pop(context);
       } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -455,6 +508,9 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Show limited view if not a member of private group
+    final canViewMembers = widget.group.isPublic || _isMember || _isOwner;
+    
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.group.groupName),
@@ -526,13 +582,23 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                Text(
-                  '${widget.group.memberCount} ${widget.group.memberCount == 1 ? 'Member' : 'Members'}',
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
+                if (canViewMembers) ...[
+                  Text(
+                    '${widget.group.memberCount} ${widget.group.memberCount == 1 ? 'Member' : 'Members'}',
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
+                ] else ...[
+                  const Text(
+                    'Private Group',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 8),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -556,27 +622,15 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
             ),
           ),
 
-          // Members List
+          // Content based on access level
           Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: widget.group.members.length,
-              itemBuilder: (context, index) {
-                final member = widget.group.members[index];
-                final isCurrentUser = member.userId == _currentUserId;
-
-                return MemberTile(
-                  member: member,
-                  showRemoveButton: _isOwner && !member.isOwner,
-                  onRemove: () => _removeMember(member),
-                  isCurrentUser: isCurrentUser,
-                );
-              },
-            ),
+            child: canViewMembers
+                ? _buildMembersList()
+                : _buildPrivateGroupView(),
           ),
         ],
       ),
-      floatingActionButton: _isOwner
+      floatingActionButton: _isOwner && canViewMembers
           ? FloatingActionButton.extended(
               onPressed: _navigateToAddPeople,
               backgroundColor: accentOrange,
@@ -587,6 +641,210 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
               ),
             )
           : null,
+    );
+  }
+
+  Widget _buildMembersList() {
+    return Consumer<CommunityProvider>(
+      builder: (context, provider, child) {
+        final pendingRequests = provider.getPendingRequests(widget.group.id);
+        
+        return ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            // Pending Join Requests (only visible to owner)
+            if (_isOwner && pendingRequests.isNotEmpty) ...[
+              const Text(
+                'Pending Join Requests',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: accentOrange,
+                ),
+              ),
+              const SizedBox(height: 12),
+              ...pendingRequests.map((request) {
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: accentOrange.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: accentOrange),
+                  ),
+                  child: ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: primaryBlue.withOpacity(0.1),
+                      child: request.userAvatar != null
+                          ? ClipOval(
+                              child: Image.network(
+                                request.userAvatar!,
+                                width: 40,
+                                height: 40,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return const Icon(Icons.person, color: primaryBlue);
+                                },
+                              ),
+                            )
+                          : const Icon(Icons.person, color: primaryBlue),
+                    ),
+                    title: Text(
+                      request.userName,
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    subtitle: Text(request.userEmail),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.check_circle, color: successGreen),
+                          onPressed: () async {
+                            final success = await provider.approveJoinRequest(
+                              request.id,
+                              widget.group.id,
+                            );
+                            if (success && mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('${request.userName} approved'),
+                                  backgroundColor: successGreen,
+                                ),
+                              );
+                              Navigator.pop(context);
+                            }
+                          },
+                          tooltip: 'Approve',
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.cancel, color: Colors.red),
+                          onPressed: () async {
+                            final success = await provider.rejectJoinRequest(request.id);
+                            if (success && mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('${request.userName} rejected'),
+                                  backgroundColor: Colors.grey,
+                                ),
+                              );
+                              Navigator.pop(context);
+                            }
+                          },
+                          tooltip: 'Reject',
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }),
+              const SizedBox(height: 24),
+              const Divider(),
+              const SizedBox(height: 16),
+            ],
+
+            // Members List
+            const Text(
+              'Members',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 12),
+            ...widget.group.members.map((member) {
+              final isCurrentUser = member.userId == _currentUserId;
+
+              return MemberTile(
+                member: member,
+                showRemoveButton: _isOwner && !member.isOwner,
+                onRemove: () => _removeMember(member),
+                isCurrentUser: isCurrentUser,
+              );
+            }),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildPrivateGroupView() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(40),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.lock_outline,
+              size: 80,
+              color: Colors.grey.shade400,
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'Private Group',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              _hasRequestedToJoin
+                  ? 'Your join request is pending.\nWaiting for owner approval.'
+                  : 'This is a private group.\nRequest to join to see members.',
+              style: const TextStyle(
+                fontSize: 16,
+                color: subtitleColor,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 32),
+            if (!_hasRequestedToJoin)
+              ElevatedButton.icon(
+                onPressed: _requestToJoinGroup,
+                icon: const Icon(Icons.person_add),
+                label: const Text('Request to Join'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: primaryBlue,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 32,
+                    vertical: 16,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              )
+            else
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
+                decoration: BoxDecoration(
+                  color: accentOrange.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: accentOrange),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.schedule, color: accentOrange),
+                    SizedBox(width: 12),
+                    Text(
+                      'Request Pending',
+                      style: TextStyle(
+                        color: accentOrange,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
     );
   }
 }

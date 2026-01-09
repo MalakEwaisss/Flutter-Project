@@ -4,9 +4,45 @@ import 'package:flutter_application_1/models/group_model.dart';
 import 'package:flutter_application_1/models/user_profile.dart';
 import '../main.dart';
 
+class JoinRequest {
+  final String id;
+  final String groupId;
+  final String userId;
+  final String userName;
+  final String userEmail;
+  final String? userAvatar;
+  final String requestedAt;
+  final String status; // 'pending', 'approved', 'rejected'
+
+  JoinRequest({
+    required this.id,
+    required this.groupId,
+    required this.userId,
+    required this.userName,
+    required this.userEmail,
+    this.userAvatar,
+    required this.requestedAt,
+    required this.status,
+  });
+
+  factory JoinRequest.fromJson(Map<String, dynamic> json) {
+    return JoinRequest(
+      id: json['id'].toString(),
+      groupId: json['group_id'],
+      userId: json['user_id'],
+      userName: json['user_name'],
+      userEmail: json['user_email'],
+      userAvatar: json['user_avatar'],
+      requestedAt: json['requested_at'],
+      status: json['status'],
+    );
+  }
+}
+
 class CommunityProvider with ChangeNotifier {
   List<TripGroup> _groups = [];
   List<UserProfile> _suggestedUsers = [];
+  Map<String, List<JoinRequest>> _pendingRequests = {};
   bool _isLoading = false;
   String? _error;
   bool _showPublicOnly = true;
@@ -16,6 +52,10 @@ class CommunityProvider with ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
   bool get showPublicOnly => _showPublicOnly;
+
+  List<JoinRequest> getPendingRequests(String groupId) {
+    return _pendingRequests[groupId] ?? [];
+  }
 
   void toggleGroupVisibility() {
     _showPublicOnly = !_showPublicOnly;
@@ -38,7 +78,7 @@ class CommunityProvider with ChangeNotifier {
       List<dynamic> groupsData;
 
       if (_showPublicOnly) {
-        // Load all groups (both public and private are visible)
+        // Load all groups (public and private are visible to everyone)
         groupsData = await supabase
             .from('trip_groups')
             .select()
@@ -62,21 +102,32 @@ class CommunityProvider with ChangeNotifier {
         }
       }
 
-      // Load members for each group
+      // Load members for each group (with visibility control)
       List<TripGroup> loadedGroups = [];
       for (var groupData in groupsData) {
-        final membersData = await supabase
-            .from('group_members')
-            .select()
-            .eq('group_id', groupData['id'])
-            .order('joined_at', ascending: true);
+        final groupId = groupData['id'].toString();
+        final isPublic = groupData['is_public'] ?? true;
+        final isOwner = groupData['owner_id'] == user.id;
+        
+        // Check if user is a member
+        final isMember = await _isUserMember(groupId, user.id);
 
-        final members = (membersData as List)
-            .map((m) => GroupMember.fromJson(m))
-            .toList();
+        // Only load members if group is public OR user is owner/member
+        List<GroupMember> members = [];
+        if (isPublic || isOwner || isMember) {
+          final membersData = await supabase
+              .from('group_members')
+              .select()
+              .eq('group_id', groupId)
+              .order('joined_at', ascending: true);
+
+          members = (membersData as List)
+              .map((m) => GroupMember.fromJson(m))
+              .toList();
+        }
 
         loadedGroups.add(TripGroup(
-          id: groupData['id'].toString(),
+          id: groupId,
           groupName: groupData['group_name'],
           tripId: groupData['trip_id'],
           tripName: groupData['trip_name'],
@@ -88,8 +139,13 @@ class CommunityProvider with ChangeNotifier {
           members: members,
           createdAt: groupData['created_at'],
           groupImage: groupData['group_image'],
-          isPublic: groupData['is_public'] ?? true,
+          isPublic: isPublic,
         ));
+
+        // Load pending requests for owned groups
+        if (isOwner) {
+          await _loadPendingRequests(groupId);
+        }
       }
 
       _groups = loadedGroups;
@@ -103,20 +159,60 @@ class CommunityProvider with ChangeNotifier {
     }
   }
 
-  /// Load real users from the database
+  Future<bool> _isUserMember(String groupId, String userId) async {
+    try {
+      final result = await supabase
+          .from('group_members')
+          .select()
+          .eq('group_id', groupId)
+          .eq('user_id', userId)
+          .maybeSingle();
+      return result != null;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Future<void> _loadPendingRequests(String groupId) async {
+    try {
+      final requestsData = await supabase
+          .from('join_requests')
+          .select()
+          .eq('group_id', groupId)
+          .eq('status', 'pending')
+          .order('requested_at', ascending: false);
+
+      _pendingRequests[groupId] = (requestsData as List)
+          .map((r) => JoinRequest.fromJson(r))
+          .toList();
+    } catch (e) {
+      debugPrint('Error loading pending requests: $e');
+    }
+  }
+
+  /// Load ALL users from the system
   Future<void> loadSuggestedUsers() async {
     try {
       final user = supabase.auth.currentUser;
       if (user == null) return;
 
-      // Get all users from auth.users via group_members table
+      // Get all users from auth.users table via a query
+      // Since we can't directly query auth.users, we'll get unique users from group_members
+      // But we also need to get users who haven't joined any groups yet
+      
+      // Strategy: Get all users who have ever been in a group OR created a group
       final allMembersData = await supabase
           .from('group_members')
           .select('user_id, user_name, user_email, user_avatar');
 
-      // Create a set of unique users (excluding current user)
+      final allOwnersData = await supabase
+          .from('trip_groups')
+          .select('owner_id, owner_name');
+
+      // Create a map of unique users
       final Map<String, UserProfile> uniqueUsers = {};
       
+      // Add members
       for (var member in allMembersData as List) {
         final userId = member['user_id'];
         if (userId != user.id && !uniqueUsers.containsKey(userId)) {
@@ -130,6 +226,20 @@ class CommunityProvider with ChangeNotifier {
         }
       }
 
+      // Add owners who might not be in group_members yet
+      for (var owner in allOwnersData as List) {
+        final userId = owner['owner_id'];
+        if (userId != user.id && !uniqueUsers.containsKey(userId)) {
+          uniqueUsers[userId] = UserProfile(
+            id: userId,
+            name: owner['owner_name'] ?? 'User',
+            email: '', // We don't have email from trip_groups
+            avatar: null,
+            bio: null,
+          );
+        }
+      }
+
       _suggestedUsers = uniqueUsers.values.toList();
       notifyListeners();
     } catch (e) {
@@ -138,7 +248,7 @@ class CommunityProvider with ChangeNotifier {
     }
   }
 
-  /// Create a new group
+  /// Create a new group with unique name validation
   Future<bool> createGroup(TripGroup group) async {
     try {
       _isLoading = true;
@@ -147,6 +257,20 @@ class CommunityProvider with ChangeNotifier {
       final user = supabase.auth.currentUser;
       if (user == null) {
         throw Exception('User not authenticated');
+      }
+
+      // Check if group name already exists
+      final existing = await supabase
+          .from('trip_groups')
+          .select()
+          .eq('group_name', group.groupName)
+          .maybeSingle();
+
+      if (existing != null) {
+        _error = 'A group with this name already exists. Please choose a different name.';
+        _isLoading = false;
+        notifyListeners();
+        return false;
       }
 
       // Insert group
@@ -178,9 +302,124 @@ class CommunityProvider with ChangeNotifier {
     }
   }
 
+  /// Request to join a private group
+  Future<bool> requestToJoinGroup(String groupId, TripGroup group) async {
+    try {
+      final user = supabase.auth.currentUser;
+      if (user == null) {
+        throw Exception('User not authenticated');
+      }
+
+      // Check if already requested
+      final existingRequest = await supabase
+          .from('join_requests')
+          .select()
+          .eq('group_id', groupId)
+          .eq('user_id', user.id)
+          .eq('status', 'pending')
+          .maybeSingle();
+
+      if (existingRequest != null) {
+        _error = 'You have already requested to join this group';
+        notifyListeners();
+        return false;
+      }
+
+      // Create join request
+      await supabase.from('join_requests').insert({
+        'group_id': groupId,
+        'user_id': user.id,
+        'user_name': user.userMetadata?['full_name'] ?? 'User',
+        'user_email': user.email,
+        'user_avatar': user.userMetadata?['avatar_url'],
+        'status': 'pending',
+      });
+
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      debugPrint('Error requesting to join group: $e');
+      return false;
+    }
+  }
+
+  /// Approve join request
+  Future<bool> approveJoinRequest(String requestId, String groupId) async {
+    try {
+      // Get request details
+      final request = await supabase
+          .from('join_requests')
+          .select()
+          .eq('id', requestId)
+          .single();
+
+      // Add user to group members
+      await supabase.from('group_members').insert({
+        'group_id': groupId,
+        'user_id': request['user_id'],
+        'user_name': request['user_name'],
+        'user_email': request['user_email'],
+        'user_avatar': request['user_avatar'],
+        'role': 'member',
+      });
+
+      // Update request status
+      await supabase
+          .from('join_requests')
+          .update({'status': 'approved'})
+          .eq('id', requestId);
+
+      // Reload data
+      await loadGroups();
+      return true;
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      debugPrint('Error approving request: $e');
+      return false;
+    }
+  }
+
+  /// Reject join request
+  Future<bool> rejectJoinRequest(String requestId) async {
+    try {
+      await supabase
+          .from('join_requests')
+          .update({'status': 'rejected'})
+          .eq('id', requestId);
+
+      // Reload data
+      await loadGroups();
+      return true;
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      debugPrint('Error rejecting request: $e');
+      return false;
+    }
+  }
+
   /// Update group details (including visibility)
   Future<bool> updateGroup(String groupId, Map<String, dynamic> updates) async {
     try {
+      // If updating group name, check for uniqueness
+      if (updates.containsKey('group_name')) {
+        final existing = await supabase
+            .from('trip_groups')
+            .select()
+            .eq('group_name', updates['group_name'])
+            .neq('id', groupId)
+            .maybeSingle();
+
+        if (existing != null) {
+          _error = 'A group with this name already exists. Please choose a different name.';
+          notifyListeners();
+          return false;
+        }
+      }
+
       await supabase
           .from('trip_groups')
           .update(updates)
@@ -199,13 +438,19 @@ class CommunityProvider with ChangeNotifier {
   /// Delete a group
   Future<bool> deleteGroup(String groupId) async {
     try {
-      // First delete all members
+      // Delete join requests
+      await supabase
+          .from('join_requests')
+          .delete()
+          .eq('group_id', groupId);
+      
+      // Delete all members
       await supabase
           .from('group_members')
           .delete()
           .eq('group_id', groupId);
       
-      // Then delete the group
+      // Delete the group
       await supabase
           .from('trip_groups')
           .delete()
@@ -246,7 +491,7 @@ class CommunityProvider with ChangeNotifier {
     }
   }
 
-  /// Add user to group immediately (no invitation)
+  /// Add user to PUBLIC group immediately (no invitation)
   Future<bool> addMemberToGroup(String groupId, UserProfile user) async {
     try {
       _isLoading = true;
@@ -267,7 +512,7 @@ class CommunityProvider with ChangeNotifier {
         return false;
       }
 
-      // Add user as member immediately
+      // Add user as member immediately (only for public groups)
       await supabase.from('group_members').insert({
         'group_id': groupId,
         'user_id': user.id,
@@ -325,21 +570,32 @@ class CommunityProvider with ChangeNotifier {
   /// Get specific group details
   Future<TripGroup?> getGroupById(String groupId) async {
     try {
+      final user = supabase.auth.currentUser;
+      if (user == null) return null;
+
       final groupData = await supabase
           .from('trip_groups')
           .select()
           .eq('id', groupId)
           .single();
 
-      final membersData = await supabase
-          .from('group_members')
-          .select()
-          .eq('group_id', groupId)
-          .order('joined_at', ascending: true);
+      final isPublic = groupData['is_public'] ?? true;
+      final isOwner = groupData['owner_id'] == user.id;
+      final isMember = await _isUserMember(groupId, user.id);
 
-      final members = (membersData as List)
-          .map((m) => GroupMember.fromJson(m))
-          .toList();
+      // Only load members if authorized
+      List<GroupMember> members = [];
+      if (isPublic || isOwner || isMember) {
+        final membersData = await supabase
+            .from('group_members')
+            .select()
+            .eq('group_id', groupId)
+            .order('joined_at', ascending: true);
+
+        members = (membersData as List)
+            .map((m) => GroupMember.fromJson(m))
+            .toList();
+      }
 
       return TripGroup(
         id: groupData['id'].toString(),
@@ -354,7 +610,7 @@ class CommunityProvider with ChangeNotifier {
         members: members,
         createdAt: groupData['created_at'],
         groupImage: groupData['group_image'],
-        isPublic: groupData['is_public'] ?? true,
+        isPublic: isPublic,
       );
     } catch (e) {
       debugPrint('Error getting group: $e');
