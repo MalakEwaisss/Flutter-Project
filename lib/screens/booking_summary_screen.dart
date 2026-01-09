@@ -20,33 +20,23 @@ class BookingSummaryScreen extends StatefulWidget {
 class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
   final TextEditingController _guestsController = TextEditingController(text: '1');
   final TextEditingController _specialRequestsController = TextEditingController();
-  final TextEditingController _seatNumberController = TextEditingController();
   bool _isLoading = false;
   DateTime? _selectedTravelDate;
-  String _selectedSeatCategory = 'Economy';
   String? _selectedMeetingPoint;
 
   @override
   void initState() {
     super.initState();
-    // Restore meeting point if coming back from meeting point selection
     if (widget.trip['_selectedMeetingPoint'] != null) {
       _selectedMeetingPoint = widget.trip['_selectedMeetingPoint'];
     }
   }
 
-  final List<String> _seatCategories = [
-    'Economy',
-    'Economy Plus',
-    'Business Class',
-    'First Class',
-  ];
 
   @override
   void dispose() {
     _guestsController.dispose();
     _specialRequestsController.dispose();
-    _seatNumberController.dispose();
     super.dispose();
   }
 
@@ -95,16 +85,7 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
       return;
     }
 
-    // Validate seat number
-    if (_seatNumberController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please enter a seat number'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      return;
-    }
+
 
     setState(() => _isLoading = true);
 
@@ -120,8 +101,6 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
         'trip_image': widget.trip['image'],
         'number_of_guests': guestsCount,
         'travel_date': _selectedTravelDate!.toIso8601String().split('T')[0],
-        'seat_category': _selectedSeatCategory,
-        'seat_number': _seatNumberController.text.trim(),
         'meeting_point': _selectedMeetingPoint ?? 'Not selected',
         'special_requests': _specialRequestsController.text.trim(),
         'total_price': totalPrice,
@@ -395,52 +374,7 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
               
               const SizedBox(height: 20),
               
-              // Seat Category Dropdown
-              DropdownButtonFormField<String>(
-                value: _selectedSeatCategory,
-                decoration: InputDecoration(
-                  labelText: 'Seat Category',
-                  prefixIcon: const Icon(Icons.airline_seat_recline_extra, color: primaryBlue),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  filled: true,
-                  fillColor: Theme.of(context).cardColor,
-                ),
-                items: _seatCategories.map((category) {
-                  return DropdownMenuItem(
-                    value: category,
-                    child: Text(category),
-                  );
-                }).toList(),
-                onChanged: (String? newValue) {
-                  if (newValue != null) {
-                    setState(() {
-                      _selectedSeatCategory = newValue;
-                    });
-                  }
-                },
-              ),
-              
-              const SizedBox(height: 20),
-              
-              // Seat Number Input
-              TextField(
-                controller: _seatNumberController,
-                textCapitalization: TextCapitalization.characters,
-                decoration: InputDecoration(
-                  labelText: 'Seat Number',
-                  hintText: 'e.g., 19D, 23B, 4C',
-                  prefixIcon: const Icon(Icons.event_seat, color: primaryBlue),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  filled: true,
-                  fillColor: Theme.of(context).cardColor,
-                ),
-              ),
-              
-              const SizedBox(height: 20),
+
               
               // Meeting Point Selection
               InkWell(

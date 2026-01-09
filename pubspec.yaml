@@ -30,5 +30,5 @@ flutter:
     - assets/images/2.jpeg
     - assets/images/3.jpeg
     - assets/images/Paris.jpeg
-    #- .env
+    - .env
 

@@ -41,9 +41,10 @@ class _TripsScreenState extends State<TripsScreen> {
   @override
   void didUpdateWidget(TripsScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Reload data when returning to this screen (e.g., after cancelling a booking)
+    // Reload el data lama terga3 lel screen dy after canceling a booking
+    //if this wasnt done, el cancelled trip hatban lel user bardo
     if (widget.isLoggedIn && !_isLoading) {
-      _loadData();
+      _loadData(); // Auto-refresh
     }
   }
 
@@ -217,7 +218,7 @@ class _TripsScreenState extends State<TripsScreen> {
 
     return GridView.builder(
       physics: const NeverScrollableScrollPhysics(),
-      shrinkWrap: true,
+      shrinkWrap: true, //3shan el app maye3melsh crash
       itemCount: trips.length,
       gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
         maxCrossAxisExtent: 400,
@@ -227,7 +228,7 @@ class _TripsScreenState extends State<TripsScreen> {
       ),
       itemBuilder: (context, index) {
         final item = trips[index];
-        
+        //Data Normalization 
         final tripData = {
           'id': item['trip_id'] ?? '',
           'title': item['trip_name'] ?? 'Unknown Trip',

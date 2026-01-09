@@ -31,6 +31,9 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     _checkFavoriteStatus();
   }
 
+//Checking favorite status
+
+
   Future<void> _checkFavoriteStatus() async {
     final user = supabase.auth.currentUser;
     if (user == null) {
@@ -45,9 +48,9 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
       final response = await supabase
           .from('favorites')
           .select()
-          .eq('user_id', user.id)
-          .eq('trip_id', widget.trip['id'])
-          .maybeSingle();
+          .eq('user_id', user.id) //filter
+          .eq('trip_id', widget.trip['id']) //filter
+          .maybeSingle(); //one row aw wla haga
 
       setState(() {
         _isFavorited = response != null;
@@ -61,10 +64,13 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     }
   }
 
+//Posting to database
+
+
   Future<void> _toggleFavorite() async {
     final user = supabase.auth.currentUser;
     if (user == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showSnackBar( 
         const SnackBar(
           content: Text('Please sign in to favorite trips'),
           backgroundColor: Colors.orange,
@@ -122,25 +128,26 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     }
   }
 
+
   void _selectTab(String tab) {
     setState(() {
       _selectedTab = tab;
     });
   }
 
-  Future<void> _selectDate(BuildContext context) async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: _selectedDate ?? DateTime.now(),
-      firstDate: DateTime.now(),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
-    );
-    if (picked != null && picked != _selectedDate) {
-      setState(() {
-        _selectedDate = picked;
-      });
-    }
-  }
+  // Future<void> _selectDate(BuildContext context) async {
+  //   final DateTime? picked = await showDatePicker(
+  //     context: context,
+  //     initialDate: _selectedDate ?? DateTime.now(),
+  //     firstDate: DateTime.now(),
+  //     lastDate: DateTime.now().add(const Duration(days: 365)),
+  //   );
+  //   if (picked != null && picked != _selectedDate) {
+  //     setState(() {
+  //       _selectedDate = picked;
+  //     });
+  //   }
+  // }
 
   bool get _isBookedView => widget.trip['_isBookedView'] == true;
 
