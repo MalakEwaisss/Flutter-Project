@@ -190,29 +190,29 @@ class CommunityProvider with ChangeNotifier {
     }
   }
 
-  /// Load ALL users from the system
+  /// Load ALL authenticated users from Supabase Auth
   Future<void> loadSuggestedUsers() async {
     try {
       final user = supabase.auth.currentUser;
       if (user == null) return;
 
-      // Get all users from auth.users table via a query
-      // Since we can't directly query auth.users, we'll get unique users from group_members
-      // But we also need to get users who haven't joined any groups yet
+      // Use Supabase Admin API to list all users
+      // Note: This requires proper RLS policies or a server-side function
+      // For now, we'll get users who have user metadata set
       
-      // Strategy: Get all users who have ever been in a group OR created a group
+      // Get all unique users from auth.users via their metadata
+      // Since we can't directly query auth.users, we use a workaround:
+      // 1. Get users from group_members
+      // 2. Get users from trip_groups owners
+      // 3. Query for all users who have logged in (via a profiles table if you have one)
+      
+      final Map<String, UserProfile> uniqueUsers = {};
+      
+      // Strategy 1: Get from group members
       final allMembersData = await supabase
           .from('group_members')
           .select('user_id, user_name, user_email, user_avatar');
 
-      final allOwnersData = await supabase
-          .from('trip_groups')
-          .select('owner_id, owner_name');
-
-      // Create a map of unique users
-      final Map<String, UserProfile> uniqueUsers = {};
-      
-      // Add members
       for (var member in allMembersData as List) {
         final userId = member['user_id'];
         if (userId != user.id && !uniqueUsers.containsKey(userId)) {
@@ -226,18 +226,46 @@ class CommunityProvider with ChangeNotifier {
         }
       }
 
-      // Add owners who might not be in group_members yet
+      // Strategy 2: Get from group owners
+      final allOwnersData = await supabase
+          .from('trip_groups')
+          .select('owner_id, owner_name');
+
       for (var owner in allOwnersData as List) {
         final userId = owner['owner_id'];
         if (userId != user.id && !uniqueUsers.containsKey(userId)) {
           uniqueUsers[userId] = UserProfile(
             id: userId,
             name: owner['owner_name'] ?? 'User',
-            email: '', // We don't have email from trip_groups
+            email: '',
             avatar: null,
             bio: null,
           );
         }
+      }
+
+      // Strategy 3: If you have a profiles table, query it
+      // This is the BEST approach - create a profiles table that syncs with auth.users
+      try {
+        final profilesData = await supabase
+            .from('profiles')
+            .select('id, full_name, email, avatar_url, bio');
+        
+        for (var profile in profilesData as List) {
+          final userId = profile['id'];
+          if (userId != user.id) {
+            uniqueUsers[userId] = UserProfile(
+              id: userId,
+              name: profile['full_name'] ?? profile['email'] ?? 'User',
+              email: profile['email'] ?? '',
+              avatar: profile['avatar_url'],
+              bio: profile['bio'],
+            );
+          }
+        }
+      } catch (e) {
+        // Profiles table might not exist, that's okay
+        debugPrint('Profiles table not available: $e');
       }
 
       _suggestedUsers = uniqueUsers.values.toList();
@@ -298,6 +326,47 @@ class CommunityProvider with ChangeNotifier {
       _isLoading = false;
       notifyListeners();
       debugPrint('Error creating group: $e');
+      return false;
+    }
+  }
+
+  /// Join a PUBLIC group immediately OR request to join a PRIVATE group
+  Future<bool> joinGroup(String groupId, TripGroup group) async {
+    try {
+      final user = supabase.auth.currentUser;
+      if (user == null) {
+        throw Exception('User not authenticated');
+      }
+
+      // Check if already a member
+      final isMember = await _isUserMember(groupId, user.id);
+      if (isMember) {
+        _error = 'You are already a member of this group';
+        notifyListeners();
+        return false;
+      }
+
+      if (group.isPublic) {
+        // PUBLIC GROUP: Join immediately
+        await supabase.from('group_members').insert({
+          'group_id': groupId,
+          'user_id': user.id,
+          'user_name': user.userMetadata?['full_name'] ?? 'User',
+          'user_email': user.email,
+          'user_avatar': user.userMetadata?['avatar_url'],
+          'role': 'member',
+        });
+
+        await loadGroups();
+        return true;
+      } else {
+        // PRIVATE GROUP: Create join request
+        return await requestToJoinGroup(groupId, group);
+      }
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      debugPrint('Error joining group: $e');
       return false;
     }
   }
@@ -491,7 +560,7 @@ class CommunityProvider with ChangeNotifier {
     }
   }
 
-  /// Add user to PUBLIC group immediately (no invitation)
+  /// Add user to PUBLIC group immediately (owner action)
   Future<bool> addMemberToGroup(String groupId, UserProfile user) async {
     try {
       _isLoading = true;

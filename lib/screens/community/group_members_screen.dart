@@ -25,6 +25,7 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
   bool _isOwner = false;
   bool _isMember = false;
   bool _hasRequestedToJoin = false;
+  bool _isJoining = false;
 
   @override
   void initState() {
@@ -55,24 +56,36 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
     }
   }
 
-  Future<void> _requestToJoinGroup() async {
+  Future<void> _handleJoinGroup() async {
+    setState(() => _isJoining = true);
+    
     final provider = Provider.of<CommunityProvider>(context, listen: false);
-    final success = await provider.requestToJoinGroup(widget.group.id, widget.group);
+    final success = await provider.joinGroup(widget.group.id, widget.group);
+    
+    setState(() => _isJoining = false);
     
     if (success && mounted) {
-      setState(() {
-        _hasRequestedToJoin = true;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Join request sent! Waiting for owner approval.'),
-          backgroundColor: successGreen,
-        ),
-      );
-    } else if (mounted) {
+      if (widget.group.isPublic) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Successfully joined the group!'),
+            backgroundColor: successGreen,
+          ),
+        );
+        Navigator.pop(context); // Refresh by going back
+      } else {
+        setState(() => _hasRequestedToJoin = true);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Join request sent! Waiting for owner approval.'),
+            backgroundColor: successGreen,
+          ),
+        );
+      }
+    } else if (mounted && provider.error != null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(provider.error ?? 'Failed to send join request'),
+          content: Text(provider.error!),
           backgroundColor: Colors.red,
         ),
       );
@@ -228,8 +241,8 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
                       const SizedBox(height: 8),
                       Text(
                         isPublic
-                            ? 'Anyone can see and join this group'
-                            : 'Visible to all, but requires approval to join',
+                            ? 'Anyone can join this group instantly'
+                            : 'Users must request to join and wait for approval',
                         style: const TextStyle(
                           fontSize: 12,
                           color: subtitleColor,
@@ -412,7 +425,7 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
                     _buildInfoRow(
                       widget.group.isPublic ? Icons.public : Icons.lock,
                       'Visibility',
-                      widget.group.isPublic ? 'Public' : 'Private',
+                      widget.group.isPublic ? 'Public (Anyone can join)' : 'Private (Request required)',
                     ),
                     if (widget.group.description != null &&
                         widget.group.description!.isNotEmpty) ...[
@@ -600,6 +613,26 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
                   ),
                 ],
                 const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      widget.group.isPublic ? Icons.public : Icons.lock,
+                      size: 16,
+                      color: widget.group.isPublic ? successGreen : accentOrange,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      widget.group.isPublic ? 'Public Group' : 'Private Group',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: widget.group.isPublic ? successGreen : accentOrange,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -800,9 +833,18 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
             const SizedBox(height: 32),
             if (!_hasRequestedToJoin)
               ElevatedButton.icon(
-                onPressed: _requestToJoinGroup,
-                icon: const Icon(Icons.person_add),
-                label: const Text('Request to Join'),
+                onPressed: _isJoining ? null : _handleJoinGroup,
+                icon: _isJoining
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : const Icon(Icons.person_add),
+                label: Text(_isJoining ? 'Requesting...' : 'Request to Join'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: primaryBlue,
                   foregroundColor: Colors.white,
