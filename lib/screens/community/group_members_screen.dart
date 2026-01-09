@@ -7,6 +7,7 @@ import '../../providers/community_provider.dart';
 import '../../widgets/community/member_tile.dart';
 import '../../main.dart';
 import 'invite_people_screen.dart';
+import 'group_chat_screen.dart'; // ADD: Import chat screen
 
 class GroupMembersScreen extends StatefulWidget {
   final TripGroup group;
@@ -26,6 +27,7 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
   bool _isMember = false;
   bool _hasRequestedToJoin = false;
   bool _isJoining = false;
+  int _unreadMessagesCount = 0; // ADD: Track unread messages
 
   @override
   void initState() {
@@ -34,6 +36,33 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
     _isOwner = widget.group.ownerId == _currentUserId;
     _isMember = widget.group.members.any((m) => m.userId == _currentUserId);
     _checkJoinRequestStatus();
+   // ADD: Load unread messages count if member
+    if (_isMember || _isOwner) {
+      _loadUnreadMessagesCount();
+    }
+  }
+
+  // ADD: Load unread messages count
+  Future<void> _loadUnreadMessagesCount() async {
+    try {
+      final user = supabase.auth.currentUser;
+      if (user == null) return;
+
+      final response = await supabase
+          .from('group_messages')
+          .select()
+          .eq('group_id', widget.group.id)
+          .neq('sender_id', user.id)
+          .eq('is_read', false);
+
+      if (mounted) {
+        setState(() {
+          _unreadMessagesCount = (response as List).length;
+        });
+      }
+    } catch (e) {
+      // Silent fail
+    }
   }
 
   Future<void> _checkJoinRequestStatus() async {
@@ -202,6 +231,20 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
       ),
     ).then((_) {
       Navigator.pop(context);
+    });
+  }
+
+
+ // ADD: Navigate to chat screen (only for members/owner)
+  void _navigateToChat() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => GroupChatScreen(group: widget.group),
+      ),
+    ).then((_) {
+      // Reload unread count when returning from chat
+      _loadUnreadMessagesCount();
     });
   }
 
@@ -549,6 +592,42 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
         title: Text(widget.group.groupName),
         backgroundColor: primaryBlue,
         actions: [
+         // ADD: Chat button (only for members/owner)
+          if (_isMember || _isOwner)
+            Stack(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.chat),
+                  onPressed: _navigateToChat,
+                  tooltip: 'Group Chat',
+                ),
+                if (_unreadMessagesCount > 0)
+                  Positioned(
+                    right: 8,
+                    top: 8,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: const BoxDecoration(
+                        color: Colors.red,
+                        shape: BoxShape.circle,
+                      ),
+                      constraints: const BoxConstraints(
+                        minWidth: 16,
+                        minHeight: 16,
+                      ),
+                      child: Text(
+                        _unreadMessagesCount > 9 ? '9+' : _unreadMessagesCount.toString(),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
           IconButton(
             icon: const Icon(Icons.info_outline),
             onPressed: _showGroupInfo,
@@ -664,6 +743,7 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
       floatingActionButton: _buildFloatingActionButton(),
     );
   }
+
 
   // KEY CHANGE: Smart Floating Action Button
   Widget? _buildFloatingActionButton() {

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/config/constants.dart';
 import 'package:flutter_application_1/config/trip_data.dart';
-import 'package:flutter_application_1/models/group_member.dart';
 import 'package:flutter_application_1/models/group_model.dart';
 import 'package:flutter_application_1/providers/community_provider.dart';
 import 'package:provider/provider.dart';
