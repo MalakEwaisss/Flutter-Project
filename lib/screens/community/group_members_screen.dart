@@ -72,7 +72,7 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
             backgroundColor: successGreen,
           ),
         );
-        Navigator.pop(context); // Refresh by going back
+        Navigator.pop(context);
       } else {
         setState(() => _hasRequestedToJoin = true);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -89,6 +89,57 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
           backgroundColor: Colors.red,
         ),
       );
+    }
+  }
+
+  Future<void> _handleLeaveGroup() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: const Text('Leave Group'),
+        content: Text(
+          'Are you sure you want to leave "${widget.group.groupName}"?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Leave'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      final provider = Provider.of<CommunityProvider>(context, listen: false);
+      final success = await provider.leaveGroup(widget.group.id, _currentUserId!);
+
+      if (success && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('You have left the group'),
+            backgroundColor: successGreen,
+          ),
+        );
+        Navigator.pop(context);
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to leave group'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -392,43 +443,22 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
                       ),
                     ),
                     const SizedBox(height: 24),
-                    _buildInfoRow(
-                      Icons.groups,
-                      'Group Name',
-                      widget.group.groupName,
-                    ),
+                    _buildInfoRow(Icons.groups, 'Group Name', widget.group.groupName),
                     const SizedBox(height: 16),
-                    _buildInfoRow(
-                      Icons.flight_takeoff,
-                      'Trip',
-                      widget.group.tripName,
-                    ),
+                    _buildInfoRow(Icons.flight_takeoff, 'Trip', widget.group.tripName),
                     const SizedBox(height: 16),
-                    _buildInfoRow(
-                      Icons.location_on,
-                      'Destination',
-                      widget.group.destination,
-                    ),
+                    _buildInfoRow(Icons.location_on, 'Destination', widget.group.destination),
                     const SizedBox(height: 16),
-                    _buildInfoRow(
-                      Icons.calendar_today,
-                      'Travel Date',
-                      widget.group.tripDate,
-                    ),
+                    _buildInfoRow(Icons.calendar_today, 'Travel Date', widget.group.tripDate),
                     const SizedBox(height: 16),
-                    _buildInfoRow(
-                      Icons.person,
-                      'Owner',
-                      widget.group.ownerName,
-                    ),
+                    _buildInfoRow(Icons.person, 'Owner', widget.group.ownerName),
                     const SizedBox(height: 16),
                     _buildInfoRow(
                       widget.group.isPublic ? Icons.public : Icons.lock,
                       'Visibility',
                       widget.group.isPublic ? 'Public (Anyone can join)' : 'Private (Request required)',
                     ),
-                    if (widget.group.description != null &&
-                        widget.group.description!.isNotEmpty) ...[
+                    if (widget.group.description != null && widget.group.description!.isNotEmpty) ...[
                       const SizedBox(height: 24),
                       const Text(
                         'Description',
@@ -447,10 +477,7 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
                         ),
                         child: Text(
                           widget.group.description!,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            height: 1.5,
-                          ),
+                          style: const TextStyle(fontSize: 14, height: 1.5),
                         ),
                       ),
                     ],
@@ -469,10 +496,7 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
                         ),
                         child: const Text(
                           'Close',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                         ),
                       ),
                     ),
@@ -507,10 +531,7 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
               const SizedBox(height: 4),
               Text(
                 value,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
               ),
             ],
           ),
@@ -521,7 +542,6 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Show limited view if not a member of private group
     final canViewMembers = widget.group.isPublic || _isMember || _isOwner;
     
     return Scaffold(
@@ -569,7 +589,6 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
       ),
       body: Column(
         children: [
-          // Group Header
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(20),
@@ -588,28 +607,18 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
                     color: primaryBlue.withOpacity(0.1),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(
-                    Icons.groups,
-                    size: 40,
-                    color: primaryBlue,
-                  ),
+                  child: const Icon(Icons.groups, size: 40, color: primaryBlue),
                 ),
                 const SizedBox(height: 16),
                 if (canViewMembers) ...[
                   Text(
                     '${widget.group.memberCount} ${widget.group.memberCount == 1 ? 'Member' : 'Members'}',
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                   ),
                 ] else ...[
                   const Text(
                     'Private Group',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                   ),
                 ],
                 const SizedBox(height: 8),
@@ -636,45 +645,68 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(
-                      Icons.flight_takeoff,
-                      size: 16,
-                      color: subtitleColor,
-                    ),
+                    const Icon(Icons.flight_takeoff, size: 16, color: subtitleColor),
                     const SizedBox(width: 6),
                     Text(
                       widget.group.tripName,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: subtitleColor,
-                      ),
+                      style: const TextStyle(fontSize: 14, color: subtitleColor),
                     ),
                   ],
                 ),
               ],
             ),
           ),
-
-          // Content based on access level
           Expanded(
-            child: canViewMembers
-                ? _buildMembersList()
-                : _buildPrivateGroupView(),
+            child: canViewMembers ? _buildMembersList() : _buildPrivateGroupView(),
           ),
         ],
       ),
-      floatingActionButton: _isOwner && canViewMembers
-          ? FloatingActionButton.extended(
-              onPressed: _navigateToAddPeople,
-              backgroundColor: accentOrange,
-              icon: const Icon(Icons.person_add),
-              label: const Text(
-                'Add People',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-            )
-          : null,
+      floatingActionButton: _buildFloatingActionButton(),
     );
+  }
+
+  // KEY CHANGE: Smart Floating Action Button
+  Widget? _buildFloatingActionButton() {
+    // Owner can add people
+    if (_isOwner && widget.group.isPublic) {
+      return FloatingActionButton.extended(
+        onPressed: _navigateToAddPeople,
+        backgroundColor: accentOrange,
+        icon: const Icon(Icons.person_add),
+        label: const Text('Add People', style: TextStyle(fontWeight: FontWeight.bold)),
+      );
+    }
+    
+    // Non-members can join public groups ✨ NEW
+    if (!_isMember && !_isOwner && widget.group.isPublic) {
+      return FloatingActionButton.extended(
+        onPressed: _isJoining ? null : _handleJoinGroup,
+        backgroundColor: _isJoining ? Colors.grey : successGreen,
+        icon: _isJoining
+            ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+              )
+            : const Icon(Icons.person_add),
+        label: Text(
+          _isJoining ? 'Joining...' : 'Join Group',
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+      );
+    }
+    
+    // Members (non-owners) can leave ✨ NEW
+    if (_isMember && !_isOwner) {
+      return FloatingActionButton.extended(
+        onPressed: _handleLeaveGroup,
+        backgroundColor: Colors.red,
+        icon: const Icon(Icons.exit_to_app),
+        label: const Text('Leave Group', style: TextStyle(fontWeight: FontWeight.bold)),
+      );
+    }
+    
+    return null;
   }
 
   Widget _buildMembersList() {
@@ -685,15 +717,10 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
         return ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            // Pending Join Requests (only visible to owner)
             if (_isOwner && pendingRequests.isNotEmpty) ...[
               const Text(
                 'Pending Join Requests',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: accentOrange,
-                ),
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: accentOrange),
               ),
               const SizedBox(height: 12),
               ...pendingRequests.map((request) {
@@ -721,10 +748,7 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
                             )
                           : const Icon(Icons.person, color: primaryBlue),
                     ),
-                    title: Text(
-                      request.userName,
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
+                    title: Text(request.userName, style: const TextStyle(fontWeight: FontWeight.bold)),
                     subtitle: Text(request.userEmail),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -732,10 +756,7 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
                         IconButton(
                           icon: const Icon(Icons.check_circle, color: successGreen),
                           onPressed: () async {
-                            final success = await provider.approveJoinRequest(
-                              request.id,
-                              widget.group.id,
-                            );
+                            final success = await provider.approveJoinRequest(request.id, widget.group.id);
                             if (success && mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
@@ -773,19 +794,10 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
               const Divider(),
               const SizedBox(height: 16),
             ],
-
-            // Members List
-            const Text(
-              'Members',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+            const Text('Members', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
             const SizedBox(height: 12),
             ...widget.group.members.map((member) {
               final isCurrentUser = member.userId == _currentUserId;
-
               return MemberTile(
                 member: member,
                 showRemoveButton: _isOwner && !member.isOwner,
@@ -806,28 +818,15 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.lock_outline,
-              size: 80,
-              color: Colors.grey.shade400,
-            ),
+            Icon(Icons.lock_outline, size: 80, color: Colors.grey.shade400),
             const SizedBox(height: 24),
-            const Text(
-              'Private Group',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+            const Text('Private Group', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
             const SizedBox(height: 12),
             Text(
               _hasRequestedToJoin
                   ? 'Your join request is pending.\nWaiting for owner approval.'
                   : 'This is a private group.\nRequest to join to see members.',
-              style: const TextStyle(
-                fontSize: 16,
-                color: subtitleColor,
-              ),
+              style: const TextStyle(fontSize: 16, color: subtitleColor),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 32),
@@ -838,31 +837,20 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
                     ? const SizedBox(
                         width: 20,
                         height: 20,
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2,
-                        ),
+                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                       )
                     : const Icon(Icons.person_add),
                 label: Text(_isJoining ? 'Requesting...' : 'Request to Join'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: primaryBlue,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 32,
-                    vertical: 16,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
               )
             else
               Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 12,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                 decoration: BoxDecoration(
                   color: accentOrange.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(12),
