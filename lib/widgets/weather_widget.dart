@@ -15,18 +15,10 @@ class WeatherWidget extends StatefulWidget {
 }
 
 class _WeatherWidgetState extends State<WeatherWidget> {
-  // Use a getter to ensure we get the latest value after dotenv loads
-  // For your presentation, I've added a fallback to ensure it works even if .env fails to load
-  String get _apiKey {
-    try {
-      // Check if initialized first to avoid NotInitializedError
-      return dotenv.env['WEATHER_API_KEY'] ?? '45885d4ddefca7a38d0595ff0b911f8b';
-    } catch (e) {
-      // Fallback to the key we found in your .env file
-      return '45885d4ddefca7a38d0595ff0b911f8b';
-    }
-  }
-  
+  // Read from .env file
+  static final String _apiKey = dotenv.env["WEATHER_API_KEY"] ?? '';
+  static const String _baseUrl = 'https://api.openweathermap.org/data/2.5/weather';
+
   Future<Map<String, dynamic>> fetchWeather() async {
     final key = _apiKey;
     final city = widget.location.split(',').first.split('&').first.trim().replaceAll(' ', '%20');
