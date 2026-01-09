@@ -1,14 +1,57 @@
+// lib/services/ai_location_service.dart
 import 'dart:convert';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
-import '../main.dart'; 
+import '../main.dart'; // To access supabase client
 
 class AILocationService {
-  static final String _geminiApiKey = dotenv.env["GEMINI_API_KEY"] ?? '';
+  static const String _geminiApiKey = 'AIzaSyA7tD-K3aikHiit3CBZ7Tmip5fGK2Cv5KM';
   static const String _baseUrl = 'https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent';
   
-  static final Map<String, List<Map<String, dynamic>>> _itineraryCache = {};
+    static final Map<String, List<Map<String, dynamic>>> _itineraryCache = {};
   static final Map<String, List<Map<String, dynamic>>> _meetingPointsCache = {};
+  
+  /// Validate and clean JSON string
+  static String? _extractAndValidateJson(String content) {
+    try {
+      // Remove markdown code blocks
+      String cleaned = content.trim()
+        .replaceAll('```json', '')
+        .replaceAll('```', '')
+        .trim();
+      
+      // Find JSON array
+      final jsonMatch = RegExp(r'\[[\s\S]*\]', multiLine: true).firstMatch(cleaned);
+      if (jsonMatch == null) return null;
+      
+      String jsonStr = jsonMatch.group(0)!;
+      
+      // Validate by attempting to parse
+      try {
+        final parsed = jsonDecode(jsonStr);
+        if (parsed is List) {
+          return jsonStr;
+        }
+      } catch (e) {
+        // Try to fix common JSON issues
+        // Remove trailing commas
+        jsonStr = jsonStr.replaceAll(RegExp(r',(\s*[}\]])'), r'$1');
+        
+        // Attempt parse again
+        try {
+          final parsed = jsonDecode(jsonStr);
+          if (parsed is List) {
+            return jsonStr;
+          }
+        } catch (e) {
+          return null;
+        }
+      }
+      
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
   
   /// Generate itinerary for a trip (with Supabase persistence)
   static Future<List<Map<String, dynamic>>> generateItinerary(
@@ -19,6 +62,7 @@ class AILocationService {
     try {
       final String tripId = tripTitle.replaceAll(' ', '_').toLowerCase();
       final cacheKey = '${tripTitle}_${location}_$days';
+      
       if (_itineraryCache.containsKey(cacheKey)) {
         return _itineraryCache[cacheKey]!;
       }
@@ -46,6 +90,7 @@ class AILocationService {
         return result;
       }
 
+      // Make API request with increased token limit
       final response = await http.post(
         Uri.parse('$_baseUrl?key=$_geminiApiKey'),
         headers: {'Content-Type': 'application/json'},
@@ -54,22 +99,16 @@ class AILocationService {
             {
               'parts': [
                 {
-                  'text': '''Create a detailed ${days}-day itinerary for "$tripTitle" in $location.
+                  'text': '''Create a ${days}-day itinerary for "$tripTitle" in $location.
 
-For each day, provide:
-1. Day number
-2. Main location/attraction title
-3. Brief description
-4. Specific latitude and longitude (be precise)
-5. 4-5 activities for that day
-6. Suggested time range
+CRITICAL: Return ONLY a valid JSON array with NO additional text, explanations, or markdown.
 
-Return ONLY valid JSON array format with no extra text:
+Format (copy exactly):
 [
   {
     "day": 1,
-    "title": "Day 1 Title",
-    "description": "Description",
+    "title": "Short Title",
+    "description": "Brief description",
     "latitude": 0.0000,
     "longitude": 0.0000,
     "activities": ["Activity 1", "Activity 2", "Activity 3", "Activity 4"],
@@ -77,14 +116,20 @@ Return ONLY valid JSON array format with no extra text:
   }
 ]
 
-Make sure coordinates are accurate for the actual locations.'''
+Requirements:
+- Exactly $days entries
+- Accurate coordinates for actual locations
+- No trailing commas
+- Valid JSON only'''
                 }
               ]
             }
           ],
           'generationConfig': {
-            'temperature': 0.7,
-            'maxOutputTokens': 4000,
+            'temperature': 0.4,
+            'maxOutputTokens': 8000,
+            'topP': 0.8,
+            'topK': 10
           }
         }),
       );
@@ -93,47 +138,84 @@ Make sure coordinates are accurate for the actual locations.'''
       
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
+        
+        if (data['candidates'] == null || data['candidates'].isEmpty) {
+          print('No candidates in response');
+          return _getFallbackItinerary(location, days);
+        }
+        
         final content = data['candidates'][0]['content']['parts'][0]['text'] as String;
+        print('Content received (${content.length} chars)');
         
-        String cleanContent = content.trim();
-        cleanContent = cleanContent.replaceAll('```json', '').replaceAll('```', '').trim();
+        // Extract and validate JSON
+        final jsonStr = _extractAndValidateJson(content);
         
-        final jsonMatch = RegExp(r'\[[\s\S]*\]').firstMatch(cleanContent);
-        if (jsonMatch != null) {
+        if (jsonStr != null) {
           try {
-            final itinerary = jsonDecode(jsonMatch.group(0)!) as List;
+            print('Found valid JSON');
+            final itinerary = jsonDecode(jsonStr) as List;
             result = itinerary.cast<Map<String, dynamic>>();
+            
+            // Validate structure
+            if (result.isEmpty || result.length != days) {
+              print('Invalid itinerary length: ${result.length}, expected: $days');
+              return _getFallbackItinerary(location, days);
+            }
+            
+            // Validate each entry
+            for (final entry in result) {
+              if (!entry.containsKey('day') || 
+                  !entry.containsKey('title') ||
+                  !entry.containsKey('latitude') ||
+                  !entry.containsKey('longitude') ||
+                  !entry.containsKey('activities')) {
+                print('Invalid entry structure');
+                return _getFallbackItinerary(location, days);
+              }
+            }
+            
+            print('Itinerary validated successfully');
           } catch (e) {
-            result = _getFallbackItinerary(location, days);
+            print('Parse error: $e');
+            return _getFallbackItinerary(location, days);
           }
         } else {
-          result = _getFallbackItinerary(location, days);
+          print('Could not extract valid JSON');
+          return _getFallbackItinerary(location, days);
         }
       } else {
-        result = _getFallbackItinerary(location, days);
+        print('API error: ${response.statusCode}');
+        return _getFallbackItinerary(location, days);
       }
 
-      for (final dayData in result) {
-        try {
-          await supabase.from('trip_itineraries').insert({
-            'trip_id': tripId,
-            'day': dayData['day'],
-            'title': dayData['title'],
-            'description': dayData['description'],
-            'latitude': dayData['latitude'],
-            'longitude': dayData['longitude'],
-            'activities': jsonEncode(dayData['activities']),
-            'time': dayData['time'],
-          });
-        } catch (e) {
-          // Handle error silently or log it
+      // Save to Supabase
+      if (result.isNotEmpty) {
+        print('Saving itinerary to Supabase...');
+        for (final dayData in result) {
+          try {
+            await supabase.from('trip_itineraries').insert({
+              'trip_id': tripId,
+              'day': dayData['day'],
+              'title': dayData['title'],
+              'description': dayData['description'],
+              'latitude': dayData['latitude'],
+              'longitude': dayData['longitude'],
+              'activities': jsonEncode(dayData['activities']),
+              'time': dayData['time'],
+            });
+          } catch (e) {
+            print('Error saving day ${dayData['day']}: $e');
+          }
         }
+        print('Itinerary saved to database');
       }
       
       _itineraryCache[cacheKey] = result;
       
       return result;
     } catch (e, stackTrace) {
+      print('Fatal error in generateItinerary: $e');
+      print('Stack trace: $stackTrace');
       return _getFallbackItinerary(location, days);
     }
   }
@@ -177,15 +259,9 @@ Make sure coordinates are accurate for the actual locations.'''
             {
               'parts': [
                 {
-                  'text': '''Suggest 4-6 popular meeting points in $location for tourists.
+                  'text': '''Suggest 5 meeting points in $location for tourists.
 
-Include:
-- Airports
-- Train stations
-- Major landmarks
-- Hotels/accommodation hubs
-
-Return ONLY valid JSON array:
+Return ONLY valid JSON array with NO additional text:
 [
   {
     "name": "Point Name",
@@ -196,15 +272,15 @@ Return ONLY valid JSON array:
   }
 ]
 
-For icon_type use: airport, train, landmark, or hotel
-Coordinates must be accurate.'''
+icon_type options: airport, train, landmark, hotel
+Accurate coordinates required.'''
                 }
               ]
             }
           ],
           'generationConfig': {
-            'temperature': 0.7,
-            'maxOutputTokens': 2000,
+            'temperature': 0.4,
+            'maxOutputTokens': 4000,
           }
         }),
       );
@@ -215,13 +291,11 @@ Coordinates must be accurate.'''
         final data = jsonDecode(response.body);
         final content = data['candidates'][0]['content']['parts'][0]['text'] as String;
         
-        String cleanContent = content.trim();
-        cleanContent = cleanContent.replaceAll('```json', '').replaceAll('```', '').trim();
+        final jsonStr = _extractAndValidateJson(content);
         
-        final jsonMatch = RegExp(r'\[[\s\S]*\]').firstMatch(cleanContent);
-        if (jsonMatch != null) {
+        if (jsonStr != null) {
           try {
-            final points = jsonDecode(jsonMatch.group(0)!) as List;
+            final points = jsonDecode(jsonStr) as List;
             result = points.cast<Map<String, dynamic>>();
           } catch (e) {
             result = _getFallbackMeetingPoints(location);
@@ -233,6 +307,7 @@ Coordinates must be accurate.'''
         result = _getFallbackMeetingPoints(location);
       }
 
+      // Save to Supabase
       for (final point in result) {
         try {
           await supabase.from('meeting_points').insert({
@@ -244,14 +319,14 @@ Coordinates must be accurate.'''
             'icon_type': point['icon_type'],
           });
         } catch (e) {
-          // Handle error silently or log it
+          // Silent fail
         }
       }
       
       _meetingPointsCache[tripId] = result;
       
       return result;
-    } catch (e, stackTrace) {
+    } catch (e) {
       return _getFallbackMeetingPoints(location);
     }
   }
@@ -281,15 +356,13 @@ Coordinates must be accurate.'''
             {
               'parts': [
                 {
-                  'text': '''Find locations matching: "$query"
-
-Provide 5-8 relevant results with accurate coordinates.
+                  'text': '''Find 6 locations matching: "$query"
 
 Return ONLY valid JSON array:
 [
   {
     "name": "Location Name",
-    "address": "Full Address",
+    "address": "Address",
     "category": "restaurant",
     "latitude": 0.0000,
     "longitude": 0.0000,
@@ -297,14 +370,14 @@ Return ONLY valid JSON array:
   }
 ]
 
-For category use: restaurant, attraction, hotel, nature, transport, or other'''
+category options: restaurant, attraction, hotel, nature, transport, other'''
                 }
               ]
             }
           ],
           'generationConfig': {
-            'temperature': 0.7,
-            'maxOutputTokens': 1500,
+            'temperature': 0.4,
+            'maxOutputTokens': 3000,
           }
         }),
       );
@@ -316,12 +389,10 @@ For category use: restaurant, attraction, hotel, nature, transport, or other'''
       final data = jsonDecode(response.body);
       final content = data['candidates'][0]['content']['parts'][0]['text'] as String;
       
-      String cleanContent = content.trim();
-      cleanContent = cleanContent.replaceAll('```json', '').replaceAll('```', '').trim();
+      final jsonStr = _extractAndValidateJson(content);
       
-      final jsonMatch = RegExp(r'\[[\s\S]*\]').firstMatch(cleanContent);
-      if (jsonMatch != null) {
-        final suggestions = jsonDecode(jsonMatch.group(0)!) as List;
+      if (jsonStr != null) {
+        final suggestions = jsonDecode(jsonStr) as List;
         final result = suggestions.cast<Map<String, dynamic>>();
         
         try {
@@ -330,13 +401,14 @@ For category use: restaurant, attraction, hotel, nature, transport, or other'''
             'suggestions': jsonEncode(result),
           });
         } catch (e) {
+          // Silent fail
         }
         
         return result;
       }
       
       return [];
-    } catch (e, stackTrace) {
+    } catch (e) {
       return [];
     }
   }
@@ -361,20 +433,26 @@ For category use: restaurant, attraction, hotel, nature, transport, or other'''
     } else if (city.toLowerCase().contains('new york')) {
       baseLat = 40.7128;
       baseLng = -74.0060;
+    } else if (city.toLowerCase().contains('rome')) {
+      baseLat = 41.9028;
+      baseLng = 12.4964;
+    } else if (city.toLowerCase().contains('swiss')) {
+      baseLat = 46.8182;
+      baseLng = 8.2275;
     }
     
     for (int i = 1; i <= days; i++) {
       result.add({
         'day': i,
         'title': 'Day $i - Explore $city',
-        'description': 'Discover the best of $city on day $i',
+        'description': 'Discover the highlights of $city on day $i',
         'latitude': baseLat + (i * 0.01),
         'longitude': baseLng + (i * 0.01),
         'activities': [
-          'Visit local attractions',
-          'Try local cuisine',
-          'Explore the city',
-          'Shopping and leisure'
+          'Visit main attractions',
+          'Experience local cuisine',
+          'Explore cultural sites',
+          'Leisure and shopping'
         ],
         'time': '9:00 AM - 6:00 PM'
       });
@@ -439,13 +517,12 @@ For category use: restaurant, attraction, hotel, nature, transport, or other'''
     ];
   }
   
-  /// Clear all caches (useful for testing or refreshing data)
+  // Utility methods
   static Future<void> clearAllCaches() async {
     _itineraryCache.clear();
     _meetingPointsCache.clear();
   }
   
-  /// Delete expired location suggestions (run periodically)
   static Future<void> cleanupExpiredSuggestions() async {
     try {
       await supabase
@@ -453,10 +530,10 @@ For category use: restaurant, attraction, hotel, nature, transport, or other'''
           .delete()
           .lt('expires_at', DateTime.now().toIso8601String());
     } catch (e) {
+      // Silent fail
     }
   }
   
-  /// Regenerate itinerary (force refresh)
   static Future<List<Map<String, dynamic>>> regenerateItinerary(
     String tripTitle,
     String location,
@@ -470,6 +547,7 @@ For category use: restaurant, attraction, hotel, nature, transport, or other'''
           .delete()
           .eq('trip_id', tripId);
     } catch (e) {
+      // Silent fail
     }
     
     final cacheKey = '${tripTitle}_${location}_$days';
@@ -478,7 +556,6 @@ For category use: restaurant, attraction, hotel, nature, transport, or other'''
     return generateItinerary(tripTitle, location, days);
   }
   
-  /// Regenerate meeting points (force refresh)
   static Future<List<Map<String, dynamic>>> regenerateMeetingPoints(
     String location,
     String tripId,
@@ -489,6 +566,7 @@ For category use: restaurant, attraction, hotel, nature, transport, or other'''
           .delete()
           .eq('trip_id', tripId);
     } catch (e) {
+      // Silent fail
     }
     
     _meetingPointsCache.remove(tripId);
