@@ -70,7 +70,8 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
             backgroundColor: successGreen,
           ),
         );
-        setState(() {}); // Refresh UI
+        // Reload group data
+        Navigator.pop(context);
       } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -82,66 +83,139 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
     }
   }
 
-  void _navigateToInvitePeople() {
+  void _navigateToAddPeople() {
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => InvitePeopleScreen(group: widget.group),
       ),
-    );
+    ).then((_) {
+      // Reload when returning
+      Navigator.pop(context);
+    });
   }
 
   Future<void> _editGroup() async {
     final nameController = TextEditingController(text: widget.group.groupName);
     final descController = TextEditingController(text: widget.group.description ?? '');
+    bool isPublic = widget.group.isPublic;
 
-    final result = await showDialog<Map<String, String>>(
+    final result = await showDialog<Map<String, dynamic>>(
       context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        title: const Text('Edit Group'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameController,
-              decoration: const InputDecoration(
-                labelText: 'Group Name',
-                border: OutlineInputBorder(),
-              ),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Text('Edit Group'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TextField(
+                  controller: nameController,
+                  decoration: const InputDecoration(
+                    labelText: 'Group Name',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: descController,
+                  decoration: const InputDecoration(
+                    labelText: 'Description',
+                    border: OutlineInputBorder(),
+                  ),
+                  maxLines: 3,
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  'Group Visibility',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: isPublic
+                        ? successGreen.withOpacity(0.1)
+                        : accentOrange.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isPublic ? successGreen : accentOrange,
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            isPublic ? Icons.public : Icons.lock,
+                            color: isPublic ? successGreen : accentOrange,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              isPublic ? 'Public Group' : 'Private Group',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: isPublic ? successGreen : accentOrange,
+                              ),
+                            ),
+                          ),
+                          Switch(
+                            value: isPublic,
+                            onChanged: (value) {
+                              setDialogState(() {
+                                isPublic = value;
+                              });
+                            },
+                            activeColor: successGreen,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        isPublic
+                            ? 'Anyone can see and join this group'
+                            : 'Only visible to all, but people need to request to join',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: subtitleColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: descController,
-              decoration: const InputDecoration(
-                labelText: 'Description',
-                border: OutlineInputBorder(),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context, {
+                  'group_name': nameController.text,
+                  'description': descController.text,
+                  'is_public': isPublic,
+                });
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: primaryBlue,
+                foregroundColor: Colors.white,
               ),
-              maxLines: 3,
+              child: const Text('Save'),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context, {
-                'group_name': nameController.text,
-                'description': descController.text,
-              });
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: primaryBlue,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Save'),
-          ),
-        ],
       ),
     );
 
@@ -504,11 +578,11 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
       ),
       floatingActionButton: _isOwner
           ? FloatingActionButton.extended(
-              onPressed: _navigateToInvitePeople,
+              onPressed: _navigateToAddPeople,
               backgroundColor: accentOrange,
               icon: const Icon(Icons.person_add),
               label: const Text(
-                'Invite People',
+                'Add People',
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
             )

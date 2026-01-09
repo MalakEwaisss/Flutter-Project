@@ -38,14 +38,13 @@ class CommunityProvider with ChangeNotifier {
       List<dynamic> groupsData;
 
       if (_showPublicOnly) {
-        // Load only public groups
+        // Load all groups (both public and private are visible)
         groupsData = await supabase
             .from('trip_groups')
             .select()
-            .eq('is_public', true)
             .order('created_at', ascending: false);
       } else {
-        // Load groups user is a member of (both public and private)
+        // Load groups user is a member of
         final memberRows = await supabase
             .from('group_members')
             .select('group_id')
@@ -104,13 +103,13 @@ class CommunityProvider with ChangeNotifier {
     }
   }
 
-  /// Load suggested users for invitations - FIXED VERSION
+  /// Load real users from the database
   Future<void> loadSuggestedUsers() async {
     try {
       final user = supabase.auth.currentUser;
       if (user == null) return;
 
-      // Get all existing group members across all groups
+      // Get all users from auth.users via group_members table
       final allMembersData = await supabase
           .from('group_members')
           .select('user_id, user_name, user_email, user_avatar');
@@ -132,34 +131,6 @@ class CommunityProvider with ChangeNotifier {
       }
 
       _suggestedUsers = uniqueUsers.values.toList();
-      
-      // If no users found from group members, create some mock users for testing
-      if (_suggestedUsers.isEmpty) {
-        _suggestedUsers = [
-          UserProfile(
-            id: 'mock_user_1',
-            name: 'John Traveler',
-            email: 'john@example.com',
-            avatar: null,
-            bio: 'Love to explore new places',
-          ),
-          UserProfile(
-            id: 'mock_user_2',
-            name: 'Sarah Adventure',
-            email: 'sarah@example.com',
-            avatar: null,
-            bio: 'Adventure seeker',
-          ),
-          UserProfile(
-            id: 'mock_user_3',
-            name: 'Mike Explorer',
-            email: 'mike@example.com',
-            avatar: null,
-            bio: 'World traveler',
-          ),
-        ];
-      }
-      
       notifyListeners();
     } catch (e) {
       _suggestedUsers = [];
@@ -179,22 +150,18 @@ class CommunityProvider with ChangeNotifier {
       }
 
       // Insert group
-      final insertedGroup = await supabase
-          .from('trip_groups')
-          .insert({
-            'group_name': group.groupName,
-            'trip_id': group.tripId,
-            'trip_name': group.tripName,
-            'destination': group.destination,
-            'trip_date': group.tripDate,
-            'description': group.description,
-            'owner_id': user.id,
-            'owner_name': group.ownerName,
-            'group_image': group.groupImage,
-            'is_public': group.isPublic,
-          })
-          .select()
-          .single();
+      await supabase.from('trip_groups').insert({
+        'group_name': group.groupName,
+        'trip_id': group.tripId,
+        'trip_name': group.tripName,
+        'destination': group.destination,
+        'trip_date': group.tripDate,
+        'description': group.description,
+        'owner_id': user.id,
+        'owner_name': group.ownerName,
+        'group_image': group.groupImage,
+        'is_public': group.isPublic,
+      });
 
       // Reload groups to get the updated list
       await loadGroups();
@@ -211,7 +178,7 @@ class CommunityProvider with ChangeNotifier {
     }
   }
 
-  /// Update group details
+  /// Update group details (including visibility)
   Future<bool> updateGroup(String groupId, Map<String, dynamic> updates) async {
     try {
       await supabase
@@ -279,8 +246,8 @@ class CommunityProvider with ChangeNotifier {
     }
   }
 
-  /// Invite/Add user to group
-  Future<bool> inviteUser(String groupId, UserProfile user) async {
+  /// Add user to group immediately (no invitation)
+  Future<bool> addMemberToGroup(String groupId, UserProfile user) async {
     try {
       _isLoading = true;
       notifyListeners();
@@ -300,7 +267,7 @@ class CommunityProvider with ChangeNotifier {
         return false;
       }
 
-      // Add user as member
+      // Add user as member immediately
       await supabase.from('group_members').insert({
         'group_id': groupId,
         'user_id': user.id,
@@ -320,7 +287,7 @@ class CommunityProvider with ChangeNotifier {
       _error = e.toString();
       _isLoading = false;
       notifyListeners();
-      debugPrint('Error inviting user: $e');
+      debugPrint('Error adding member: $e');
       return false;
     }
   }
@@ -344,7 +311,7 @@ class CommunityProvider with ChangeNotifier {
     }
   }
 
-  /// Search users (for invitation)
+  /// Search users (for adding members)
   List<UserProfile> searchUsers(String query) {
     if (query.isEmpty) return _suggestedUsers;
     
