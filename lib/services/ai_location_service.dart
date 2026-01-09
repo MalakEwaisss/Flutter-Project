@@ -4,12 +4,13 @@ import 'package:http/http.dart' as http;
 import '../main.dart'; // To access supabase client
 
 class AILocationService {
-  static const String _geminiApiKey = 'AIzaSyA7tD-K3aikHiit3CBZ7Tmip5fGK2Cv5KM';
+  static const String _geminiApiKey = '';
   static const String _baseUrl = 'https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent';
   
-    static final Map<String, List<Map<String, dynamic>>> _itineraryCache = {};
+  static final Map<String, List<Map<String, dynamic>>> _itineraryCache = {};
   static final Map<String, List<Map<String, dynamic>>> _meetingPointsCache = {};
-  
+  static final Map<String, Map<String, double>> _tripCoordinatesCache = {};
+
   /// Validate and clean JSON string
   static String? _extractAndValidateJson(String content) {
     try {
@@ -53,6 +54,202 @@ class AILocationService {
     }
   }
   
+  
+/// Get coordinates for a trip location using Gemini AI
+  static Future<Map<String, double>> getTripCoordinates(String location, String tripId) async {
+    try {
+      // Check cache first
+      if (_tripCoordinatesCache.containsKey(tripId)) {
+        return _tripCoordinatesCache[tripId]!;
+      }
+
+      // Check Supabase first
+      final existingData = await supabase
+          .from('trip_coordinates')
+          .select()
+          .eq('trip_id', tripId)
+          .maybeSingle();
+
+      if (existingData != null) {
+        final coords = {
+          'latitude': double.parse(existingData['latitude'].toString()),
+          'longitude': double.parse(existingData['longitude'].toString()),
+        };
+        _tripCoordinatesCache[tripId] = coords;
+        return coords;
+      }
+
+      // If not in database, use Gemini to get coordinates
+      final response = await http.post(
+        Uri.parse('$_baseUrl?key=$_geminiApiKey'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'contents': [
+            {
+              'parts': [
+                {
+                  'text': '''What are the exact geographic coordinates (latitude and longitude) for: "$location"?
+
+Please provide the main city/destination coordinates.
+
+Return ONLY valid JSON format with no extra text:
+{
+  "latitude": 0.0000,
+  "longitude": 0.0000
+}
+
+Be precise with the coordinates.'''
+                }
+              ]
+            }
+          ],
+          'generationConfig': {
+            'temperature': 0.3,
+            'maxOutputTokens': 200,
+          }
+        }),
+      );
+
+      Map<String, double> coordinates;
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final content = data['candidates'][0]['content']['parts'][0]['text'] as String;
+        
+        String cleanContent = content.trim();
+        cleanContent = cleanContent.replaceAll('```json', '').replaceAll('```', '').trim();
+        
+        final jsonMatch = RegExp(r'\{[\s\S]*\}').firstMatch(cleanContent);
+        if (jsonMatch != null) {
+          try {
+            final coordData = jsonDecode(jsonMatch.group(0)!);
+            coordinates = {
+              'latitude': double.parse(coordData['latitude'].toString()),
+              'longitude': double.parse(coordData['longitude'].toString()),
+            };
+          } catch (e) {
+            coordinates = _getFallbackCoordinates(location);
+          }
+        } else {
+          coordinates = _getFallbackCoordinates(location);
+        }
+      } else {
+        coordinates = _getFallbackCoordinates(location);
+      }
+
+      // Save to Supabase
+      try {
+        await supabase.from('trip_coordinates').insert({
+          'trip_id': tripId,
+          'location': location,
+          'latitude': coordinates['latitude'],
+          'longitude': coordinates['longitude'],
+        });
+      } catch (e) {
+        // Handle error silently
+      }
+
+      // Cache it
+      _tripCoordinatesCache[tripId] = coordinates;
+
+      return coordinates;
+    } catch (e) {
+      // Return fallback coordinates
+      return _getFallbackCoordinates(location);
+    }
+  }
+
+  /// Get coordinates for multiple trips in batch
+  static Future<Map<String, Map<String, double>>> getBatchTripCoordinates(
+    List<Map<String, dynamic>> trips
+  ) async {
+    final Map<String, Map<String, double>> allCoordinates = {};
+    
+    // Process trips in parallel for better performance
+    final futures = trips.map((trip) async {
+      try {
+        final coords = await getTripCoordinates(
+          trip['location'] ?? '',
+          trip['id'] ?? '',
+        );
+        return MapEntry(trip['id'], coords);
+      } catch (e) {
+        return MapEntry(
+          trip['id'],
+          _getFallbackCoordinates(trip['location'] ?? ''),
+        );
+      }
+    });
+
+    final results = await Future.wait(futures);
+    for (final entry in results) {
+      allCoordinates[entry.key] = entry.value;
+    }
+
+    return allCoordinates;
+  }
+
+  /// Fallback coordinates based on location name
+  static Map<String, double> _getFallbackCoordinates(String location) {
+    final loc = location.toLowerCase();
+    
+    // Common destinations with known coordinates
+    final Map<String, Map<String, double>> knownLocations = {
+      'bali': {'latitude': -8.4095, 'longitude': 115.1889},
+      'paris': {'latitude': 48.8566, 'longitude': 2.3522},
+      'rome': {'latitude': 41.9028, 'longitude': 12.4964},
+      'swiss alps': {'latitude': 46.8182, 'longitude': 8.2275},
+      'switzerland': {'latitude': 46.8182, 'longitude': 8.2275},
+      'tokyo': {'latitude': 35.6762, 'longitude': 139.6503},
+      'japan': {'latitude': 35.6762, 'longitude': 139.6503},
+      'giza': {'latitude': 29.9773, 'longitude': 31.1325},
+      'egypt': {'latitude': 29.9773, 'longitude': 31.1325},
+      'santorini': {'latitude': 36.3932, 'longitude': 25.4615},
+      'greece': {'latitude': 37.9838, 'longitude': 23.7275},
+      'reykjavik': {'latitude': 64.1466, 'longitude': -21.9426},
+      'iceland': {'latitude': 64.1466, 'longitude': -21.9426},
+      'dubai': {'latitude': 25.2048, 'longitude': 55.2708},
+      'uae': {'latitude': 25.2048, 'longitude': 55.2708},
+      'maldives': {'latitude': 4.1755, 'longitude': 73.5093},
+      'new york': {'latitude': 40.7128, 'longitude': -74.0060},
+      'usa': {'latitude': 40.7128, 'longitude': -74.0060},
+      'manaus': {'latitude': -3.4653, 'longitude': -62.2159},
+      'brazil': {'latitude': -3.4653, 'longitude': -62.2159},
+      'amazon': {'latitude': -3.4653, 'longitude': -62.2159},
+      'london': {'latitude': 51.5074, 'longitude': -0.1278},
+      'barcelona': {'latitude': 41.3851, 'longitude': 2.1734},
+      'amsterdam': {'latitude': 52.3676, 'longitude': 4.9041},
+      'singapore': {'latitude': 1.3521, 'longitude': 103.8198},
+      'sydney': {'latitude': -33.8688, 'longitude': 151.2093},
+      'melbourne': {'latitude': -37.8136, 'longitude': 144.9631},
+      'bangkok': {'latitude': 13.7563, 'longitude': 100.5018},
+      'istanbul': {'latitude': 41.0082, 'longitude': 28.9784},
+      'moscow': {'latitude': 55.7558, 'longitude': 37.6173},
+      'beijing': {'latitude': 39.9042, 'longitude': 116.4074},
+      'shanghai': {'latitude': 31.2304, 'longitude': 121.4737},
+      'hong kong': {'latitude': 22.3193, 'longitude': 114.1694},
+      'seoul': {'latitude': 37.5665, 'longitude': 126.9780},
+      'los angeles': {'latitude': 34.0522, 'longitude': -118.2437},
+      'miami': {'latitude': 25.7617, 'longitude': -80.1918},
+      'cancun': {'latitude': 21.1619, 'longitude': -86.8515},
+      'rio': {'latitude': -22.9068, 'longitude': -43.1729},
+      'buenos aires': {'latitude': -34.6037, 'longitude': -58.3816},
+      'cape town': {'latitude': -33.9249, 'longitude': 18.4241},
+      'marrakech': {'latitude': 31.6295, 'longitude': -7.9811},
+      'morocco': {'latitude': 31.6295, 'longitude': -7.9811},
+    };
+
+    // Try to find a match
+    for (final entry in knownLocations.entries) {
+      if (loc.contains(entry.key)) {
+        return entry.value;
+      }
+    }
+
+    // Default to center of world map if no match
+    return {'latitude': 0.0, 'longitude': 0.0};
+  }
+
   /// Generate itinerary for a trip (with Supabase persistence)
   static Future<List<Map<String, dynamic>>> generateItinerary(
     String tripTitle,
