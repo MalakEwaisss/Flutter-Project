@@ -55,7 +55,6 @@ class CommunityProvider with ChangeNotifier {
         if (groupIds.isEmpty) {
           groupsData = [];
         } else {
-          // Use .filter with 'in' operator — value must be a parenthesized, comma-separated list
           groupsData = await supabase
               .from('trip_groups')
               .select()
@@ -78,7 +77,7 @@ class CommunityProvider with ChangeNotifier {
             .toList();
 
         loadedGroups.add(TripGroup(
-          id: groupData['id'],
+          id: groupData['id'].toString(),
           groupName: groupData['group_name'],
           tripId: groupData['trip_id'],
           tripName: groupData['trip_name'],
@@ -105,31 +104,64 @@ class CommunityProvider with ChangeNotifier {
     }
   }
 
-  /// Load suggested users for invitations
+  /// Load suggested users for invitations - FIXED VERSION
   Future<void> loadSuggestedUsers() async {
     try {
       final user = supabase.auth.currentUser;
       if (user == null) return;
 
-      // Get all users except current user
-      final usersData = await supabase
-          .from('auth.users')
-          .select('id, email, raw_user_meta_data')
-          .neq('id', user.id)
-          .limit(20);
+      // Get all existing group members across all groups
+      final allMembersData = await supabase
+          .from('group_members')
+          .select('user_id, user_name, user_email, user_avatar');
 
-      _suggestedUsers = (usersData as List).map((userData) {
-        final metaData = userData['raw_user_meta_data'] ?? {};
-        return UserProfile(
-          id: userData['id'],
-          name: metaData['full_name'] ?? 'User',
-          email: userData['email'],
-          avatar: metaData['avatar_url'],
-          bio: metaData['bio'],
-        );
-      }).toList();
+      // Create a set of unique users (excluding current user)
+      final Map<String, UserProfile> uniqueUsers = {};
+      
+      for (var member in allMembersData as List) {
+        final userId = member['user_id'];
+        if (userId != user.id && !uniqueUsers.containsKey(userId)) {
+          uniqueUsers[userId] = UserProfile(
+            id: userId,
+            name: member['user_name'] ?? 'User',
+            email: member['user_email'] ?? '',
+            avatar: member['user_avatar'],
+            bio: null,
+          );
+        }
+      }
+
+      _suggestedUsers = uniqueUsers.values.toList();
+      
+      // If no users found from group members, create some mock users for testing
+      if (_suggestedUsers.isEmpty) {
+        _suggestedUsers = [
+          UserProfile(
+            id: 'mock_user_1',
+            name: 'John Traveler',
+            email: 'john@example.com',
+            avatar: null,
+            bio: 'Love to explore new places',
+          ),
+          UserProfile(
+            id: 'mock_user_2',
+            name: 'Sarah Adventure',
+            email: 'sarah@example.com',
+            avatar: null,
+            bio: 'Adventure seeker',
+          ),
+          UserProfile(
+            id: 'mock_user_3',
+            name: 'Mike Explorer',
+            email: 'mike@example.com',
+            avatar: null,
+            bio: 'World traveler',
+          ),
+        ];
+      }
+      
+      notifyListeners();
     } catch (e) {
-      // If we can't access auth.users, create empty list
       _suggestedUsers = [];
       debugPrint('Could not load suggested users: $e');
     }
@@ -164,7 +196,6 @@ class CommunityProvider with ChangeNotifier {
           .select()
           .single();
 
-      // The trigger will automatically add owner as member
       // Reload groups to get the updated list
       await loadGroups();
 
@@ -201,6 +232,13 @@ class CommunityProvider with ChangeNotifier {
   /// Delete a group
   Future<bool> deleteGroup(String groupId) async {
     try {
+      // First delete all members
+      await supabase
+          .from('group_members')
+          .delete()
+          .eq('group_id', groupId);
+      
+      // Then delete the group
       await supabase
           .from('trip_groups')
           .delete()
@@ -337,7 +375,7 @@ class CommunityProvider with ChangeNotifier {
           .toList();
 
       return TripGroup(
-        id: groupData['id'],
+        id: groupData['id'].toString(),
         groupName: groupData['group_name'],
         tripId: groupData['trip_id'],
         tripName: groupData['trip_name'],

@@ -5,6 +5,7 @@ import '../../config/config.dart';
 import '../../models/group_model.dart';
 import '../../providers/community_provider.dart';
 import '../../widgets/community/member_tile.dart';
+import '../../main.dart';
 import 'invite_people_screen.dart';
 
 class GroupMembersScreen extends StatefulWidget {
@@ -20,12 +21,13 @@ class GroupMembersScreen extends StatefulWidget {
 }
 
 class _GroupMembersScreenState extends State<GroupMembersScreen> {
-  final String _currentUserId = 'user1'; // Mock current user ID
+  String? _currentUserId;
   bool _isOwner = false;
 
   @override
   void initState() {
     super.initState();
+    _currentUserId = supabase.auth.currentUser?.id;
     _isOwner = widget.group.ownerId == _currentUserId;
   }
 
@@ -87,6 +89,127 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
         builder: (context) => InvitePeopleScreen(group: widget.group),
       ),
     );
+  }
+
+  Future<void> _editGroup() async {
+    final nameController = TextEditingController(text: widget.group.groupName);
+    final descController = TextEditingController(text: widget.group.description ?? '');
+
+    final result = await showDialog<Map<String, String>>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: const Text('Edit Group'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameController,
+              decoration: const InputDecoration(
+                labelText: 'Group Name',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: descController,
+              decoration: const InputDecoration(
+                labelText: 'Description',
+                border: OutlineInputBorder(),
+              ),
+              maxLines: 3,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context, {
+                'group_name': nameController.text,
+                'description': descController.text,
+              });
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: primaryBlue,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+
+    if (result != null && mounted) {
+      final provider = Provider.of<CommunityProvider>(context, listen: false);
+      final success = await provider.updateGroup(widget.group.id, result);
+
+      if (success && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Group updated successfully'),
+            backgroundColor: successGreen,
+          ),
+        );
+        Navigator.pop(context); // Go back to refresh
+      }
+    }
+  }
+
+  Future<void> _deleteGroup() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: const Text('Delete Group'),
+        content: const Text(
+          'Are you sure you want to delete this group? This action cannot be undone and all members will be removed.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      final provider = Provider.of<CommunityProvider>(context, listen: false);
+      final success = await provider.deleteGroup(widget.group.id);
+
+      if (success && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Group deleted successfully'),
+            backgroundColor: successGreen,
+          ),
+        );
+        Navigator.pop(context); // Go back to community screen
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to delete group'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   void _showGroupInfo() {
@@ -157,6 +280,12 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
                       Icons.person,
                       'Owner',
                       widget.group.ownerName,
+                    ),
+                    const SizedBox(height: 16),
+                    _buildInfoRow(
+                      widget.group.isPublic ? Icons.public : Icons.lock,
+                      'Visibility',
+                      widget.group.isPublic ? 'Public' : 'Private',
                     ),
                     if (widget.group.description != null &&
                         widget.group.description!.isNotEmpty) ...[
@@ -262,6 +391,37 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
             onPressed: _showGroupInfo,
             tooltip: 'Group Info',
           ),
+          if (_isOwner) ...[
+            PopupMenuButton(
+              icon: const Icon(Icons.more_vert),
+              itemBuilder: (context) => [
+                PopupMenuItem(
+                  child: const Row(
+                    children: [
+                      Icon(Icons.edit, color: primaryBlue),
+                      SizedBox(width: 8),
+                      Text('Edit Group'),
+                    ],
+                  ),
+                  onTap: () {
+                    Future.delayed(Duration.zero, () => _editGroup());
+                  },
+                ),
+                PopupMenuItem(
+                  child: const Row(
+                    children: [
+                      Icon(Icons.delete, color: Colors.red),
+                      SizedBox(width: 8),
+                      Text('Delete Group'),
+                    ],
+                  ),
+                  onTap: () {
+                    Future.delayed(Duration.zero, () => _deleteGroup());
+                  },
+                ),
+              ],
+            ),
+          ],
         ],
       ),
       body: Column(
