@@ -21,7 +21,7 @@ class _WeatherWidgetState extends State<WeatherWidget> {
 
   Future<Map<String, dynamic>> fetchWeather() async {
     final key = _apiKey;
-    final city = widget.location.split(',').first.split('&').first.trim().replaceAll(' ', '%20');
+    final city = widget.location.split(',').first.split('&').first.trim().replaceAll(' ', '%20'); //urls cannot have spaces so replace with '%20'
     
     // 1. Try WeatherAPI.com first
     try {
