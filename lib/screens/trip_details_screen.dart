@@ -8,11 +8,13 @@ import '../main.dart';
 class TripDetailsScreen extends StatefulWidget {
   final Map<String, dynamic> trip;
   final Function(AppPage, {Map<String, dynamic>? trip}) navigateTo;
+  final AppPage? previousPage;
 
   const TripDetailsScreen({
     super.key,
     required this.trip,
     required this.navigateTo,
+    this.previousPage,
   });
 
   @override
@@ -560,7 +562,8 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                 if (Navigator.canPop(context)) {
                   Navigator.pop(context);
                 } else {
-                  widget.navigateTo(AppPage.trips);
+                  // Use previousPage if available, otherwise default to home
+                  widget.navigateTo(widget.previousPage ?? AppPage.home);
                 }
               },
             ),

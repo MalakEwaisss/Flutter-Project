@@ -75,6 +75,7 @@ class TravelHubApp extends StatefulWidget {
 
 class _TravelHubAppState extends State<TravelHubApp> {
   AppPage _currentPage = AppPage.home;
+  AppPage _previousPage = AppPage.home;
   bool _isLoggedIn = false;
   Map<String, String> _currentUser = {};
   Map<String, dynamic>? _selectedTrip;
@@ -108,6 +109,15 @@ class _TravelHubAppState extends State<TravelHubApp> {
 
   void _navigateTo(AppPage page, {Map<String, dynamic>? trip}) {
     setState(() {
+      // Only update previous page if we are moving FROM a main screen (Home, Trips, Explore, etc.)
+      // and the target is different. This prevents sub-pages like 'Booking' from being 
+      // set as the 'previousPage' for 'TripDetails'.
+      final mainPages = [AppPage.home, AppPage.trips, AppPage.explore, AppPage.savedLocations, AppPage.map, AppPage.profile, AppPage.community];
+      
+      if (page != _currentPage && mainPages.contains(_currentPage)) {
+        _previousPage = _currentPage;
+      }
+      
       _currentPage = page;
       if (trip != null) _selectedTrip = trip;
       // Force trips screen to reload when navigating to it
@@ -162,7 +172,11 @@ class _TravelHubAppState extends State<TravelHubApp> {
         if (_selectedTrip == null) {
           return const Center(child: Text("No trip selected. Return to Home."));
         }
-        return TripDetailsScreen(trip: _selectedTrip!, navigateTo: _navigateTo);
+        return TripDetailsScreen(
+          trip: _selectedTrip!, 
+          navigateTo: _navigateTo,
+          previousPage: _previousPage,
+        );
       case AppPage.selectMeetingPoint:
         if (_selectedTrip == null) {
           return const Center(child: Text("No trip selected. Return to Home."));
@@ -253,7 +267,11 @@ class _TravelHubAppState extends State<TravelHubApp> {
           final trip = settings.arguments as Map<String, dynamic>;
           return MaterialPageRoute(
             builder: (context) =>
-                TripDetailsScreen(trip: trip, navigateTo: _navigateTo),
+                TripDetailsScreen(
+                  trip: trip, 
+                  navigateTo: _navigateTo,
+                  previousPage: _previousPage,
+                ),
           );
         }
         return MaterialPageRoute(

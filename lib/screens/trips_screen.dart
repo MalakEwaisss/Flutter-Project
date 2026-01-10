@@ -311,11 +311,21 @@ class _TripsScreenState extends State<TripsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    widget.isLoggedIn 
-                        ? (_currentView == 'bookings' ? 'My Bookings' : 'My Favorites')
-                        : 'My Trips',
-                    style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+                  Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.arrow_back, color: primaryBlue, size: 28),
+                        onPressed: () => widget.navigateTo(AppPage.home),
+                        tooltip: 'Back to Home',
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        widget.isLoggedIn 
+                            ? (_currentView == 'bookings' ? 'My Bookings' : 'My Favorites')
+                            : 'My Trips',
+                        style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 20),
                   if (widget.isLoggedIn) ...[

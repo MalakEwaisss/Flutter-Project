@@ -105,9 +105,19 @@ class _ExploreTripsScreenState extends State<ExploreTripsScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
-                          'Explore All Trips',
-                          style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+                        Row(
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.arrow_back, color: primaryBlue, size: 28),
+                              onPressed: () => widget.navigateTo(AppPage.home),
+                              tooltip: 'Back to Home',
+                            ),
+                            const SizedBox(width: 8),
+                            const Text(
+                              'Explore All Trips',
+                              style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+                            ),
+                          ],
                         ),
                         Row(
                           children: [

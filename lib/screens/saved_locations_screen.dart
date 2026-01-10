@@ -316,6 +316,12 @@ class _SavedLocationsScreenState extends State<SavedLocationsScreen> {
       color: Theme.of(context).scaffoldBackgroundColor,
       child: Row(
         children: [
+          IconButton(
+            icon: const Icon(Icons.arrow_back, color: primaryBlue),
+            onPressed: () => widget.navigateTo(AppPage.home),
+            tooltip: 'Back to Home',
+          ),
+          const SizedBox(width: 8),
           const Text(
             'TravelHub',
             style: TextStyle(
