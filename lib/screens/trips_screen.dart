@@ -41,9 +41,10 @@ class _TripsScreenState extends State<TripsScreen> {
   @override
   void didUpdateWidget(TripsScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Reload data when returning to this screen (e.g., after cancelling a booking)
+    // Reload el data lama terga3 lel screen dy after canceling a booking
+    //if this wasnt done, el cancelled trip hatban lel user bardo
     if (widget.isLoggedIn && !_isLoading) {
-      _loadData();
+      _loadData(); // Auto-refresh
     }
   }
 
@@ -190,7 +191,7 @@ class _TripsScreenState extends State<TripsScreen> {
             ),
             const SizedBox(height: 30),
             ElevatedButton.icon(
-              onPressed: () => widget.navigateTo(AppPage.home),
+              onPressed: () => widget.navigateTo(AppPage.explore),
               icon: const Icon(Icons.explore),
               label: const Text('Explore Trips'),
               style: ElevatedButton.styleFrom(
@@ -217,7 +218,7 @@ class _TripsScreenState extends State<TripsScreen> {
 
     return GridView.builder(
       physics: const NeverScrollableScrollPhysics(),
-      shrinkWrap: true,
+      shrinkWrap: true, //3shan el app maye3melsh crash
       itemCount: trips.length,
       gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
         maxCrossAxisExtent: 400,
@@ -227,7 +228,7 @@ class _TripsScreenState extends State<TripsScreen> {
       ),
       itemBuilder: (context, index) {
         final item = trips[index];
-        
+        //Data Normalization 
         final tripData = {
           'id': item['trip_id'] ?? '',
           'title': item['trip_name'] ?? 'Unknown Trip',
@@ -310,11 +311,21 @@ class _TripsScreenState extends State<TripsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    widget.isLoggedIn 
-                        ? (_currentView == 'bookings' ? 'My Bookings' : 'My Favorites')
-                        : 'My Trips',
-                    style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+                  Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.arrow_back, color: primaryBlue, size: 28),
+                        onPressed: () => widget.navigateTo(AppPage.home),
+                        tooltip: 'Back to Home',
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        widget.isLoggedIn 
+                            ? (_currentView == 'bookings' ? 'My Bookings' : 'My Favorites')
+                            : 'My Trips',
+                        style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 20),
                   if (widget.isLoggedIn) ...[

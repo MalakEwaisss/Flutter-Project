@@ -8,11 +8,13 @@ import '../main.dart';
 class TripDetailsScreen extends StatefulWidget {
   final Map<String, dynamic> trip;
   final Function(AppPage, {Map<String, dynamic>? trip}) navigateTo;
+  final AppPage? previousPage;
 
   const TripDetailsScreen({
     super.key,
     required this.trip,
     required this.navigateTo,
+    this.previousPage,
   });
 
   @override
@@ -30,6 +32,8 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     _checkFavoriteStatus();
   }
 
+  //Checking favorite status
+
   Future<void> _checkFavoriteStatus() async {
     final user = supabase.auth.currentUser;
     if (user == null) {
@@ -44,9 +48,9 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
       final response = await supabase
           .from('favorites')
           .select()
-          .eq('user_id', user.id)
-          .eq('trip_id', widget.trip['id'])
-          .maybeSingle();
+          .eq('user_id', user.id) //filter
+          .eq('trip_id', widget.trip['id']) //filter
+          .maybeSingle(); //one row aw wla haga
 
       setState(() {
         _isFavorited = response != null;
@@ -59,6 +63,8 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
       });
     }
   }
+
+  //Posting to database
 
   Future<void> _toggleFavorite() async {
     final user = supabase.auth.currentUser;
@@ -126,6 +132,20 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
       _selectedTab = tab;
     });
   }
+
+  // Future<void> _selectDate(BuildContext context) async {
+  //   final DateTime? picked = await showDatePicker(
+  //     context: context,
+  //     initialDate: _selectedDate ?? DateTime.now(),
+  //     firstDate: DateTime.now(),
+  //     lastDate: DateTime.now().add(const Duration(days: 365)),
+  //   );
+  //   if (picked != null && picked != _selectedDate) {
+  //     setState(() {
+  //       _selectedDate = picked;
+  //     });
+  //   }
+  // }
 
   bool get _isBookedView => widget.trip['_isBookedView'] == true;
 
@@ -538,7 +558,8 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                 if (Navigator.canPop(context)) {
                   Navigator.pop(context);
                 } else {
-                  widget.navigateTo(AppPage.trips);
+                  // Use previousPage if available, otherwise default to home
+                  widget.navigateTo(widget.previousPage ?? AppPage.home);
                 }
               },
             ),

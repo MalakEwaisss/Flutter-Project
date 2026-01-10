@@ -4,6 +4,7 @@ import '../config/config.dart';
 import '../widgets/custom_app_bar.dart';
 import '../widgets/max_width_section.dart';
 import '../widgets/popular_trip_card.dart';
+import '../services/trips_service.dart';
 
 typedef ShowAuthModal = void Function(BuildContext context);
 
@@ -129,41 +130,90 @@ class _HeroSection extends StatelessWidget {
   }
 }
 
-class _PopularTripsSection extends StatelessWidget {
+class _PopularTripsSection extends StatefulWidget {
   final Function(AppPage, {Map<String, dynamic>? trip}) navigateTo;
   const _PopularTripsSection({required this.navigateTo});
 
   @override
+  State<_PopularTripsSection> createState() => _PopularTripsSectionState();
+}
+
+class _PopularTripsSectionState extends State<_PopularTripsSection> {
+  List<Map<String, dynamic>> _trips = [];
+  bool _isLoading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTrips();
+  }
+
+  Future<void> _loadTrips() async {
+    try {
+      final trips = await TripsService.getFeaturedTrips(limit: 4);
+      setState(() {
+        _trips = trips;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _error = e.toString();
+        _isLoading = false;
+        // Use fallback data
+        _trips = fallbackTrips.take(4).toList();
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final trips = allTrips.take(4).toList();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Popular Trips',
-          style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'Popular Trips',
+              style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+            ),
+            if (_error != null)
+              Tooltip(
+                message: 'Using offline data',
+                child: Icon(Icons.cloud_off, color: Colors.orange, size: 20),
+              ),
+          ],
         ),
         const SizedBox(height: 20),
-        SizedBox(
-          height: 420,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            itemCount: trips.length,
-            itemBuilder: (context, index) {
-              return Padding(
-                padding: const EdgeInsets.only(right: 20),
-                child: SizedBox(
-                  width: 300,
-                  child: PopularTripCard(
-                    trip: trips[index],
-                    onViewDetails: (trip) =>
-                        navigateTo(AppPage.tripDetails, trip: trip),
+        if (_isLoading)
+          const Center(
+            child: Padding(
+              padding: EdgeInsets.all(40),
+              child: CircularProgressIndicator(),
+            ),
+          )
+        else
+          SizedBox(
+            height: 420,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              itemCount: _trips.length,
+              itemBuilder: (context, index) {
+                return Padding(
+                  padding: const EdgeInsets.only(right: 20),
+                  child: SizedBox(
+                    width: 300,
+                    child: PopularTripCard(
+                      trip: _trips[index],
+                      onViewDetails: (trip) =>
+                          widget.navigateTo(AppPage.tripDetails, trip: trip),
+                    ),
                   ),
-                ),
-              );
-            },
+                );
+              },
+            ),
           ),
-        ),
       ],
     );
   }

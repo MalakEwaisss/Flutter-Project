@@ -1,18 +1,21 @@
 // lib/main.dart
 import 'package:flutter/material.dart';
-import 'package:flutter_application_1/screens/SelectMeetingPointScreen.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter_application_1/screens/map/SelectMeetingPointScreen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-
+import 'package:provider/provider.dart';
+import 'providers/community_provider.dart';
 import 'auth/auth_modal.dart';
 import 'config/config.dart';
 import 'screens/home_screen.dart';
 import 'screens/trips_screen.dart';
 import 'screens/trip_details_screen.dart';
 import 'screens/profile_screen.dart';
-import 'screens/map_overview_screen.dart';
-import 'screens/trip_location_view_screen.dart';
-import 'screens/saved_locations_screen.dart';
+import 'screens/map/trip_location_view_screen.dart';
+import 'screens/map/saved_locations_screen.dart';
+import 'screens/community/community_screen.dart';
+import 'package:flutter_application_1/providers/map_state_provider.dart'; // ADD THIS
 
 import 'screens/booking_summary_screen.dart';
 import 'screens/explore_trips_screen.dart';
@@ -51,7 +54,15 @@ Future<void> main() async {
         'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpvZmNka2RveGhramVqZ2tkcmJrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU5MzY1ODIsImV4cCI6MjA4MTUxMjU4Mn0.z3gUMnRDFNp3zvxaXd1jXyZa-CwINR43KIQOBJa66TQ',
   );
 
-  runApp(const TravelHubApp());
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => CommunityProvider()),
+        ChangeNotifierProvider(create: (_) => MapStateProvider()),
+      ],
+      child: const TravelHubApp(),
+    ),
+  );
 }
 
 // Global Supabase client for easy access across the app
@@ -65,6 +76,7 @@ class TravelHubApp extends StatefulWidget {
 
 class _TravelHubAppState extends State<TravelHubApp> {
   AppPage _currentPage = AppPage.home;
+  AppPage _previousPage = AppPage.home;
   bool _isLoggedIn = false;
   Map<String, String> _currentUser = {};
   Map<String, dynamic>? _selectedTrip;
@@ -98,6 +110,23 @@ class _TravelHubAppState extends State<TravelHubApp> {
 
   void _navigateTo(AppPage page, {Map<String, dynamic>? trip}) {
     setState(() {
+      // Only update previous page if we are moving FROM a main screen (Home, Trips, Explore, etc.)
+      // and the target is different. This prevents sub-pages like 'Booking' from being
+      // set as the 'previousPage' for 'TripDetails'.
+      final mainPages = [
+        AppPage.home,
+        AppPage.trips,
+        AppPage.explore,
+        AppPage.savedLocations,
+        AppPage.map,
+        AppPage.profile,
+        AppPage.community,
+      ];
+
+      if (page != _currentPage && mainPages.contains(_currentPage)) {
+        _previousPage = _currentPage;
+      }
+
       _currentPage = page;
       if (trip != null) _selectedTrip = trip;
       // Force trips screen to reload when navigating to it
@@ -132,7 +161,7 @@ class _TravelHubAppState extends State<TravelHubApp> {
           onThemeToggle: _toggleTheme,
         );
       case AppPage.map:
-        return MapOverviewScreen(
+        return SavedLocationsScreen(
           navigateTo: _navigateTo,
           isLoggedIn: _isLoggedIn,
           showAuthModal: _showAuthModal,
@@ -152,7 +181,11 @@ class _TravelHubAppState extends State<TravelHubApp> {
         if (_selectedTrip == null) {
           return const Center(child: Text("No trip selected. Return to Home."));
         }
-        return TripDetailsScreen(trip: _selectedTrip!, navigateTo: _navigateTo);
+        return TripDetailsScreen(
+          trip: _selectedTrip!,
+          navigateTo: _navigateTo,
+          previousPage: _previousPage,
+        );
       case AppPage.selectMeetingPoint:
         if (_selectedTrip == null) {
           return const Center(child: Text("No trip selected. Return to Home."));
@@ -187,6 +220,13 @@ class _TravelHubAppState extends State<TravelHubApp> {
         );
       case AppPage.explore:
         return ExploreTripsScreen(
+          navigateTo: _navigateTo,
+          isLoggedIn: _isLoggedIn,
+          showAuthModal: _showAuthModal,
+          onThemeToggle: _toggleTheme,
+        );
+      case AppPage.community:
+        return CommunityScreen(
           navigateTo: _navigateTo,
           isLoggedIn: _isLoggedIn,
           showAuthModal: _showAuthModal,
@@ -235,8 +275,11 @@ class _TravelHubAppState extends State<TravelHubApp> {
         if (settings.name == '/trip-details') {
           final trip = settings.arguments as Map<String, dynamic>;
           return MaterialPageRoute(
-            builder: (context) =>
-                TripDetailsScreen(trip: trip, navigateTo: _navigateTo),
+            builder: (context) => TripDetailsScreen(
+              trip: trip,
+              navigateTo: _navigateTo,
+              previousPage: _previousPage,
+            ),
           );
         }
         return MaterialPageRoute(

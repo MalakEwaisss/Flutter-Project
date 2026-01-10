@@ -1,23 +1,10 @@
-// ignore_for_file: deprecated_member_use
+// lib/screens/SelectMeetingPointScreen.dart
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/models/meeting_point.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
-import '../config/config.dart';
-
-// Predefined popular meeting points
-class MeetingPoint {
-  final String name;
-  final String description;
-  final LatLng location;
-  final IconData icon;
-
-  MeetingPoint({
-    required this.name,
-    required this.description,
-    required this.location,
-    required this.icon,
-  });
-}
+import '../../config/config.dart';
+import '../../services/ai_location_service.dart';
 
 class SelectMeetingPointScreen extends StatefulWidget {
   final Map<String, dynamic> trip;
@@ -30,146 +17,56 @@ class SelectMeetingPointScreen extends StatefulWidget {
   });
 
   @override
-  State<SelectMeetingPointScreen> createState() => _SelectMeetingPointScreenState();
+  State<SelectMeetingPointScreen> createState() =>
+      _SelectMeetingPointScreenState();
 }
 
 class _SelectMeetingPointScreenState extends State<SelectMeetingPointScreen> {
   final MapController _mapController = MapController();
   final TextEditingController _searchController = TextEditingController();
-  
+
   LatLng? _selectedLocation;
   String? _selectedLocationName;
   bool _isCustomLocation = false;
-  
+
   List<MeetingPoint> _popularMeetingPoints = [];
   List<MeetingPoint> _filteredPoints = [];
-  
-  // Check if we came from booking screen
+  bool _isLoading = true;
+
   bool get _isFromBooking => widget.trip['_fromBooking'] == true;
 
   @override
   void initState() {
     super.initState();
-    _initializeMeetingPoints();
-    _filteredPoints = _popularMeetingPoints;
+    _loadMeetingPoints();
   }
 
-  void _initializeMeetingPoints() {
-    // Get the trip's main location for context-aware meeting points
-    final tripId = widget.trip['id'];
-    
-    if (tripId == '1') {
-      // Bali meeting points
-      _popularMeetingPoints = [
-        MeetingPoint(
-          name: 'Ngurah Rai International Airport',
-          description: 'Main arrival terminal',
-          location: LatLng(-8.7467, 115.1671),
-          icon: Icons.flight,
-        ),
-        MeetingPoint(
-          name: 'Ubud Center',
-          description: 'Cultural heart of Bali',
-          location: LatLng(-8.5069, 115.2625),
-          icon: Icons.temple_buddhist,
-        ),
-        MeetingPoint(
-          name: 'Seminyak Beach',
-          description: 'Popular beach area',
-          location: LatLng(-8.6919, 115.1724),
-          icon: Icons.beach_access,
-        ),
-        MeetingPoint(
-          name: 'Kuta Square',
-          description: 'Shopping and dining hub',
-          location: LatLng(-8.7184, 115.1686),
-          icon: Icons.shopping_bag,
-        ),
-      ];
-    } else if (tripId == '2') {
-      // Paris meeting points
-      _popularMeetingPoints = [
-        MeetingPoint(
-          name: 'Eiffel Tower',
-          description: 'Iconic landmark',
-          location: LatLng(48.8584, 2.2945),
-          icon: Icons.tour,
-        ),
-        MeetingPoint(
-          name: 'Louvre Museum',
-          description: 'Main entrance',
-          location: LatLng(48.8606, 2.3376),
-          icon: Icons.museum,
-        ),
-        MeetingPoint(
-          name: 'Gare du Nord',
-          description: 'Train station',
-          location: LatLng(48.8809, 2.3553),
-          icon: Icons.train,
-        ),
-        MeetingPoint(
-          name: 'Arc de Triomphe',
-          description: 'Historical monument',
-          location: LatLng(48.8738, 2.2950),
-          icon: Icons.account_balance,
-        ),
-      ];
-    } else if (tripId == '3') {
-      // Swiss Alps meeting points
-      _popularMeetingPoints = [
-        MeetingPoint(
-          name: 'Zurich Airport',
-          description: 'Main terminal',
-          location: LatLng(47.4647, 8.5492),
-          icon: Icons.flight,
-        ),
-        MeetingPoint(
-          name: 'Zermatt Station',
-          description: 'Gateway to Matterhorn',
-          location: LatLng(46.0207, 7.7491),
-          icon: Icons.train,
-        ),
-        MeetingPoint(
-          name: 'Interlaken Ost',
-          description: 'Adventure sports hub',
-          location: LatLng(46.6863, 7.8632),
-          icon: Icons.landscape,
-        ),
-        MeetingPoint(
-          name: 'Jungfraujoch Station',
-          description: 'Top of Europe',
-          location: LatLng(46.5475, 7.9851),
-          icon: Icons.terrain,
-        ),
-      ];
-    } else if (tripId == '4') {
-      // Tokyo meeting points
-      _popularMeetingPoints = [
-        MeetingPoint(
-          name: 'Tokyo Station',
-          description: 'Central railway hub',
-          location: LatLng(35.6812, 139.7671),
-          icon: Icons.train,
-        ),
-        MeetingPoint(
-          name: 'Shibuya Crossing',
-          description: 'Famous intersection',
-          location: LatLng(35.6595, 139.7004),
-          icon: Icons.traffic,
-        ),
-        MeetingPoint(
-          name: 'Sensoji Temple',
-          description: 'Ancient Buddhist temple',
-          location: LatLng(35.7148, 139.7967),
-          icon: Icons.temple_buddhist,
-        ),
-        MeetingPoint(
-          name: 'Tokyo Skytree',
-          description: 'Observation tower',
-          location: LatLng(35.7101, 139.8107),
-          icon: Icons.location_city,
-        ),
-      ];
+  Future<void> _loadMeetingPoints() async {
+    setState(() => _isLoading = true);
+
+    try {
+      final points = await AILocationService.generateMeetingPoints(
+        widget.trip['location'],
+        widget.trip['id'],
+      );
+
+      setState(() {
+        _popularMeetingPoints = points
+            .map((p) => MeetingPoint.fromJson(p))
+            .toList();
+        _filteredPoints = _popularMeetingPoints;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() => _isLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error loading meeting points: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -179,7 +76,7 @@ class _SelectMeetingPointScreenState extends State<SelectMeetingPointScreen> {
       _selectedLocationName = 'Custom Location';
       _isCustomLocation = true;
     });
-    _mapController.move(location, _mapController.zoom);
+    _mapController.move(location, _mapController.camera.zoom);
   }
 
   void _selectPredefinedPoint(MeetingPoint point) {
@@ -197,9 +94,11 @@ class _SelectMeetingPointScreenState extends State<SelectMeetingPointScreen> {
         _filteredPoints = _popularMeetingPoints;
       } else {
         _filteredPoints = _popularMeetingPoints
-            .where((point) =>
-                point.name.toLowerCase().contains(query.toLowerCase()) ||
-                point.description.toLowerCase().contains(query.toLowerCase()))
+            .where(
+              (point) =>
+                  point.name.toLowerCase().contains(query.toLowerCase()) ||
+                  point.description.toLowerCase().contains(query.toLowerCase()),
+            )
             .toList();
       }
     });
@@ -223,15 +122,12 @@ class _SelectMeetingPointScreenState extends State<SelectMeetingPointScreen> {
       ),
     );
 
-    // Navigate back with the selected meeting point
     if (_isFromBooking) {
-      // Going back to booking screen - pass meeting point data
       final tripWithMeetingPoint = Map<String, dynamic>.from(widget.trip);
       tripWithMeetingPoint['_selectedMeetingPoint'] = _selectedLocationName;
-      tripWithMeetingPoint.remove('_fromBooking'); // Clean up flag
+      tripWithMeetingPoint.remove('_fromBooking');
       widget.navigateTo(AppPage.booking, trip: tripWithMeetingPoint);
     } else {
-      // Going back to trip details
       widget.navigateTo(AppPage.tripDetails, trip: widget.trip);
     }
   }
@@ -245,7 +141,6 @@ class _SelectMeetingPointScreenState extends State<SelectMeetingPointScreen> {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () {
-            // Navigate back based on where we came from
             if (_isFromBooking) {
               widget.navigateTo(AppPage.booking, trip: widget.trip);
             } else {
@@ -254,35 +149,22 @@ class _SelectMeetingPointScreenState extends State<SelectMeetingPointScreen> {
           },
         ),
       ),
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          bool isMobile = constraints.maxWidth < 900;
-
-          if (isMobile) {
-            return _buildMobileLayout();
-          } else {
-            return _buildDesktopLayout();
-          }
-        },
-      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : LayoutBuilder(
+              builder: (context, constraints) {
+                bool isMobile = constraints.maxWidth < 900;
+                return isMobile ? _buildMobileLayout() : _buildDesktopLayout();
+              },
+            ),
     );
   }
 
   Widget _buildMobileLayout() {
     return Stack(
       children: [
-        // Map
         _buildMap(),
-
-        // Search bar at top
-        Positioned(
-          top: 16,
-          left: 16,
-          right: 16,
-          child: _buildSearchBar(),
-        ),
-
-        // Bottom sheet with meeting points
+        Positioned(top: 16, left: 16, right: 16, child: _buildSearchBar()),
         DraggableScrollableSheet(
           initialChildSize: 0.35,
           minChildSize: 0.2,
@@ -314,9 +196,7 @@ class _SelectMeetingPointScreenState extends State<SelectMeetingPointScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  Expanded(
-                    child: _buildMeetingPointsList(scrollController),
-                  ),
+                  Expanded(child: _buildMeetingPointsList(scrollController)),
                   _buildConfirmButton(),
                 ],
               ),
@@ -330,13 +210,7 @@ class _SelectMeetingPointScreenState extends State<SelectMeetingPointScreen> {
   Widget _buildDesktopLayout() {
     return Row(
       children: [
-        // Map on the left
-        Expanded(
-          flex: 2,
-          child: _buildMap(),
-        ),
-
-        // Sidebar on the right
+        Expanded(flex: 2, child: _buildMap()),
         Container(
           width: 400,
           decoration: BoxDecoration(
@@ -355,9 +229,7 @@ class _SelectMeetingPointScreenState extends State<SelectMeetingPointScreen> {
                 padding: const EdgeInsets.all(16),
                 child: _buildSearchBar(),
               ),
-              Expanded(
-                child: _buildMeetingPointsList(null),
-              ),
+              Expanded(child: _buildMeetingPointsList(null)),
               _buildConfirmButton(),
             ],
           ),
@@ -367,13 +239,15 @@ class _SelectMeetingPointScreenState extends State<SelectMeetingPointScreen> {
   }
 
   Widget _buildMap() {
-    final tripLocation = _getTripLocation();
-    
+    final center = _popularMeetingPoints.isNotEmpty
+        ? _popularMeetingPoints.first.location
+        : LatLng(0, 0);
+
     return FlutterMap(
       mapController: _mapController,
       options: MapOptions(
-        center: tripLocation,
-        zoom: 12.0,
+        initialCenter: center,
+        initialZoom: 12.0,
         minZoom: 3.0,
         maxZoom: 18.0,
         onTap: _onMapTap,
@@ -383,11 +257,8 @@ class _SelectMeetingPointScreenState extends State<SelectMeetingPointScreen> {
           urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
           userAgentPackageName: 'com.travelhub.app',
         ),
-        
-        // Markers for popular meeting points
         MarkerLayer(
           markers: [
-            // Popular meeting points
             ..._popularMeetingPoints.map((point) {
               final isSelected = _selectedLocation == point.location;
               return Marker(
@@ -423,28 +294,19 @@ class _SelectMeetingPointScreenState extends State<SelectMeetingPointScreen> {
                 ),
               );
             }),
-            
             // Custom selected location
             if (_selectedLocation != null && _isCustomLocation)
               Marker(
                 point: _selectedLocation!,
                 width: 60,
                 height: 60,
-                child: const Icon(
-                  Icons.place,
-                  color: accentOrange,
-                  size: 50,
-                ),
+                child: const Icon(Icons.place, color: accentOrange, size: 50),
               ),
           ],
         ),
-        
         RichAttributionWidget(
           attributions: [
-            TextSourceAttribution(
-              'OpenStreetMap contributors',
-              onTap: () {},
-            ),
+            TextSourceAttribution('OpenStreetMap contributors', onTap: () {}),
           ],
         ),
       ],
@@ -457,10 +319,7 @@ class _SelectMeetingPointScreenState extends State<SelectMeetingPointScreen> {
         color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 8,
-          ),
+          BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 8),
         ],
       ),
       child: TextField(
@@ -501,13 +360,9 @@ class _SelectMeetingPointScreenState extends State<SelectMeetingPointScreen> {
         const SizedBox(height: 8),
         Text(
           'Tap a location or tap anywhere on the map',
-          style: TextStyle(
-            fontSize: 14,
-            color: subtitleColor,
-          ),
+          style: TextStyle(fontSize: 14, color: subtitleColor),
         ),
         const SizedBox(height: 16),
-        
         if (_filteredPoints.isEmpty)
           const Center(
             child: Padding(
@@ -521,7 +376,7 @@ class _SelectMeetingPointScreenState extends State<SelectMeetingPointScreen> {
         else
           ..._filteredPoints.map((point) {
             final isSelected = _selectedLocation == point.location;
-            
+
             return GestureDetector(
               onTap: () => _selectPredefinedPoint(point),
               child: Container(
@@ -546,11 +401,7 @@ class _SelectMeetingPointScreenState extends State<SelectMeetingPointScreen> {
                         color: isSelected ? accentOrange : primaryBlue,
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: Icon(
-                        point.icon,
-                        color: Colors.white,
-                        size: 28,
-                      ),
+                      child: Icon(point.icon, color: Colors.white, size: 28),
                     ),
                     const SizedBox(width: 16),
                     Expanded(
@@ -587,10 +438,7 @@ class _SelectMeetingPointScreenState extends State<SelectMeetingPointScreen> {
               ),
             );
           }),
-        
         const SizedBox(height: 16),
-        
-        // Custom location info
         if (_selectedLocation != null && _isCustomLocation)
           Container(
             padding: const EdgeInsets.all(16),
@@ -608,11 +456,7 @@ class _SelectMeetingPointScreenState extends State<SelectMeetingPointScreen> {
                     color: accentOrange,
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(
-                    Icons.place,
-                    color: Colors.white,
-                    size: 28,
-                  ),
+                  child: const Icon(Icons.place, color: Colors.white, size: 28),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -639,11 +483,7 @@ class _SelectMeetingPointScreenState extends State<SelectMeetingPointScreen> {
                     ],
                   ),
                 ),
-                const Icon(
-                  Icons.check_circle,
-                  color: accentOrange,
-                  size: 28,
-                ),
+                const Icon(Icons.check_circle, color: accentOrange, size: 28),
               ],
             ),
           ),
@@ -716,22 +556,6 @@ class _SelectMeetingPointScreenState extends State<SelectMeetingPointScreen> {
         ],
       ),
     );
-  }
-
-  LatLng _getTripLocation() {
-    final tripId = widget.trip['id'];
-    switch (tripId) {
-      case '1':
-        return LatLng(-8.4095, 115.1889); // Bali
-      case '2':
-        return LatLng(48.8566, 2.3522); // Paris
-      case '3':
-        return LatLng(46.8182, 8.2275); // Swiss Alps
-      case '4':
-        return LatLng(35.6762, 139.6503); // Tokyo
-      default:
-        return LatLng(0, 0);
-    }
   }
 
   @override

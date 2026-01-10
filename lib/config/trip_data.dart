@@ -1,5 +1,8 @@
-// Enhanced Trip Data with your requested Unsplash Images
-const List<Map<String, dynamic>> allTrips = [
+// This file now serves as a fallback/default data source
+// Real data comes from Supabase via TripsService
+
+// Fallback trips data (used only if Supabase fetch fails)
+const List<Map<String, dynamic>> fallbackTrips = [
   {
     'id': '1',
     'title': 'Bali Beach Paradise',
@@ -70,88 +73,7 @@ const List<Map<String, dynamic>> allTrips = [
     'class': 'Business Class',
     'description': 'Witness the last standing wonder of the ancient world and explore ancient Egyptian civilization.',
   },
-  {
-    'id': '6',
-    'title': 'Santorini Sunsets',
-    'location': 'Santorini, Greece',
-    'rating': 4.8,
-    'reviews': 654,
-    'price': 1699,
-    'date': 'Aug 12 - Aug 20',
-    'image': 'https://images.unsplash.com/photo-1613395877344-13d4a8e0d49e?q=80&w=2070&auto=format&fit=crop',
-    'airline': 'Aegean Airlines',
-    'aircraft': 'Airbus A320',
-    'class': 'Economy Plus',
-    'description': 'Experience stunning sunsets, white-washed buildings, and crystal-clear waters of the Aegean Sea.',
-  },
-  {
-    'id': '7',
-    'title': 'Iceland Northern Lights',
-    'location': 'Reykjavik, Iceland',
-    'rating': 4.7,
-    'reviews': 421,
-    'price': 1899,
-    'date': 'Sep 5 - Sep 14',
-    'image': 'https://images.unsplash.com/photo-1483347756197-71ef80e95f73?q=80&w=2070&auto=format&fit=crop',
-    'airline': 'Icelandair',
-    'aircraft': 'Boeing 737 MAX',
-    'class': 'Economy',
-    'description': 'Chase the magical Northern Lights and explore glaciers, geysers, and volcanic landscapes.',
-  },
-  {
-    'id': '8',
-    'title': 'Dubai Luxury',
-    'location': 'Dubai, UAE',
-    'rating': 4.9,
-    'reviews': 891,
-    'price': 2199,
-    'date': 'Oct 15 - Oct 23',
-    'image': 'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?q=80&w=2070&auto=format&fit=crop',
-    'airline': 'Emirates',
-    'aircraft': 'Airbus A380',
-    'class': 'First Class',
-    'description': 'Indulge in ultra-modern luxury, shopping, and world-class dining in the heart of the UAE.',
-  },
-  {
-    'id': '9',
-    'title': 'Maldives Paradise',
-    'location': 'Maldives',
-    'rating': 5.0,
-    'reviews': 567,
-    'price': 2499,
-    'date': 'Nov 1 - Nov 11',
-    'image': 'https://images.unsplash.com/photo-1514282401047-d79a71a590e8?q=80&w=2065&auto=format&fit=crop',
-    'airline': 'Singapore Airlines',
-    'aircraft': 'Airbus A350',
-    'class': 'Business Class',
-    'description': 'Relax in overwater bungalows surrounded by turquoise waters and vibrant coral reefs.',
-  },
-  {
-    'id': '10',
-    'title': 'New York City',
-    'location': 'New York, USA',
-    'rating': 4.8,
-    'reviews': 1024,
-    'price': 1399,
-    'date': 'Dec 3 - Dec 10',
-    'image': 'https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?q=80&w=2070&auto=format&fit=crop',
-    'airline': 'Delta Airlines',
-    'aircraft': 'Boeing 767',
-    'class': 'Premium Economy',
-    'description': 'Experience the city that never sleeps with iconic landmarks, Broadway shows, and world-class museums.',
-  },
-  {
-    'id': '11',
-    'title': 'Amazon Rainforest',
-    'location': 'Manaus, Brazil',
-    'rating': 4.6,
-    'reviews': 298,
-    'price': 1599,
-    'date': 'Jan 20 - Jan 30',
-    'image': 'https://images.unsplash.com/photo-1516426122078-c23e76319801?q=80&w=2068&auto=format&fit=crop',
-    'airline': 'LATAM Airlines',
-    'aircraft': 'Boeing 787',
-    'class': 'Economy',
-    'description': 'Discover the world\'s largest rainforest with exotic wildlife, indigenous cultures, and river adventures.',
-  },
 ];
+
+// This is kept for backward compatibility but will be populated from Supabase
+List<Map<String, dynamic>> allTrips = List.from(fallbackTrips);

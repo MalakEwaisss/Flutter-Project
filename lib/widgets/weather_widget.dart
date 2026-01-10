@@ -16,15 +16,38 @@ class WeatherWidget extends StatefulWidget {
 
 class _WeatherWidgetState extends State<WeatherWidget> {
   // Read from .env file
-  static final String _apiKey = dotenv.env['WEATHER_API_KEY'] ?? '';
+  static final String _apiKey = dotenv.env["WEATHER_API_KEY"] ?? '';
   static const String _baseUrl = 'https://api.openweathermap.org/data/2.5/weather';
 
   Future<Map<String, dynamic>> fetchWeather() async {
+    final key = _apiKey;
+    final city = widget.location.split(',').first.split('&').first.trim().replaceAll(' ', '%20'); //urls cannot have spaces so replace with '%20'
+    
+    // 1. Try WeatherAPI.com first
     try {
-      final city = widget.location.split(',').first.trim();
-      final url = Uri.parse('$_baseUrl?q=$city&appid=$_apiKey&units=metric');
+      final url = Uri.parse('https://api.weatherapi.com/v1/current.json?key=$key&q=$city&aqi=no');
       final response = await http.get(url);
+      
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final current = data['current'];
+        final condition = current['condition'];
+        return {
+          'temperature': current['temp_c'].round().toString(),
+          'condition': condition['text'],
+          'description': condition['text'],
+          'humidity': current['humidity'].toString(),
+          'icon_url': 'https:${condition['icon']}',
+          'city': data['location']['name'],
+        };
+      }
+    } catch (_) {}
 
+    // 2. Try OpenWeatherMap (Fallback)
+    try {
+      final url = Uri.parse('https://api.openweathermap.org/data/2.5/weather?q=$city&appid=$key&units=metric');
+      final response = await http.get(url);
+      
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         return {
@@ -32,34 +55,36 @@ class _WeatherWidgetState extends State<WeatherWidget> {
           'condition': data['weather'][0]['main'],
           'description': data['weather'][0]['description'],
           'humidity': data['main']['humidity'].toString(),
-          'icon': data['weather'][0]['icon'],
           'city': data['name'],
         };
+      } else if (response.statusCode == 401) {
+        throw Exception('Invalid API Key (Tried both WeatherAPI & OpenWeather)');
       } else {
-        throw Exception('Failed to load weather: ${response.statusCode}');
+        final msg = json.decode(response.body)['message'] ?? 'Unknown Error';
+        throw Exception(msg);
       }
     } catch (e) {
-      throw Exception('Weather API Error: $e');
+      if (e.toString().contains('Invalid API Key')) rethrow;
+      throw Exception('Weather Error: $e');
     }
   }
 
   IconData _getWeatherIcon(String condition) {
-    switch (condition.toLowerCase()) {
-      case 'clear':
-        return Icons.wb_sunny;
-      case 'clouds':
-        return Icons.cloud;
-      case 'rain':
-        return Icons.grain;
-      case 'drizzle':
-        return Icons.opacity;
-      case 'thunderstorm':
-        return Icons.flash_on;
-      case 'snow':
-        return Icons.ac_unit;
-      default:
-        return Icons.wb_cloudy;
+    final desc = condition.toLowerCase();
+    if (desc.contains('sunny') || desc.contains('clear')) {
+      return Icons.wb_sunny;
+    } else if (desc.contains('cloud') || desc.contains('overcast')) {
+      return Icons.cloud;
+    } else if (desc.contains('rain') || desc.contains('drizzle') || desc.contains('patchy rain')) {
+      return Icons.grain;
+    } else if (desc.contains('thunder') || desc.contains('storm')) {
+      return Icons.flash_on;
+    } else if (desc.contains('snow') || desc.contains('ice') || desc.contains('sleet') || desc.contains('blizzard')) {
+      return Icons.ac_unit;
+    } else if (desc.contains('mist') || desc.contains('fog')) {
+      return Icons.cloud_queue;
     }
+    return Icons.wb_cloudy;
   }
 
   @override
@@ -123,9 +148,14 @@ class _WeatherWidgetState extends State<WeatherWidget> {
                     children: [
                       const Icon(Icons.error_outline, color: Colors.red, size: 40),
                       const SizedBox(height: 10),
-                      const Text(
-                        'Unable to load weather',
-                        style: TextStyle(fontWeight: FontWeight.bold),
+                      Text(
+                        snapshot.error.toString().replaceAll('Exception: ', ''),
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: Colors.red,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                       const SizedBox(height: 5),
                       Text(
