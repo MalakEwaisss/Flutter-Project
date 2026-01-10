@@ -43,7 +43,7 @@ class _WeatherWidgetState extends State<WeatherWidget> {
       }
     } catch (_) {}
 
-    // 2. Try OpenWeatherMap (plan b)
+    // 2. Try OpenWeatherMap (Fallback)
     try {
       final url = Uri.parse('https://api.openweathermap.org/data/2.5/weather?q=$city&appid=$key&units=metric');
       final response = await http.get(url);
