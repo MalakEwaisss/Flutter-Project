@@ -422,7 +422,7 @@ class _SelectMeetingPointScreenState extends State<SelectMeetingPointScreen> {
                   ),
                 ),
               );
-            }).toList(),
+            }),
             
             // Custom selected location
             if (_selectedLocation != null && _isCustomLocation)
@@ -586,7 +586,7 @@ class _SelectMeetingPointScreenState extends State<SelectMeetingPointScreen> {
                 ),
               ),
             );
-          }).toList(),
+          }),
         
         const SizedBox(height: 16),
         

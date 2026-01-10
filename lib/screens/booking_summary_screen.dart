@@ -397,7 +397,7 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
               
               // Seat Category Dropdown
               DropdownButtonFormField<String>(
-                value: _selectedSeatCategory,
+                initialValue: _selectedSeatCategory,
                 decoration: InputDecoration(
                   labelText: 'Seat Category',
                   prefixIcon: const Icon(Icons.airline_seat_recline_extra, color: primaryBlue),

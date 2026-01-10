@@ -802,7 +802,7 @@ class _TripLocationViewScreenState extends State<TripLocationViewScreen> {
                                     ],
                                   ),
                                 );
-                              }).toList(),
+                              }),
                             ],
                           ],
                         ),
@@ -826,7 +826,7 @@ class _TripLocationViewScreenState extends State<TripLocationViewScreen> {
                 ),
             ],
           );
-        }).toList(),
+        }),
       ],
     );
   }

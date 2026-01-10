@@ -267,7 +267,7 @@ class _BudgetSliderCard extends StatelessWidget {
                     fontSize: 12,
                     color: Theme.of(
                       context,
-                    ).colorScheme.onBackground.withOpacity(0.6),
+                    ).colorScheme.onSurface.withOpacity(0.6),
                   ),
                 ),
                 Text(
@@ -276,7 +276,7 @@ class _BudgetSliderCard extends StatelessWidget {
                     fontSize: 12,
                     color: Theme.of(
                       context,
-                    ).colorScheme.onBackground.withOpacity(0.6),
+                    ).colorScheme.onSurface.withOpacity(0.6),
                   ),
                 ),
               ],

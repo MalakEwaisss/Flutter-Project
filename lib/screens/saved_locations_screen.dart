@@ -791,7 +791,7 @@ class _SavedLocationsScreenState extends State<SavedLocationsScreen> {
               category.displayName,
               category.icon,
             );
-          }).toList(),
+          }),
         ],
       ),
     );

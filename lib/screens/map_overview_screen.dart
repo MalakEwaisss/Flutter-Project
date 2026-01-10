@@ -461,7 +461,7 @@ class _TripsList extends StatelessWidget {
               ),
             ),
           );
-        }).toList(),
+        }),
       ],
     );
   }

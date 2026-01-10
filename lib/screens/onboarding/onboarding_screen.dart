@@ -78,6 +78,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 ),
               ),
             ),
+
             Expanded(
               child: PageView.builder(
                 controller: _pageController,
@@ -88,6 +89,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 },
               ),
             ),
+
             _PageIndicator(currentPage: _currentPage, pageCount: _pages.length),
             const SizedBox(height: 32),
             Padding(
