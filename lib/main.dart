@@ -1,31 +1,30 @@
 // lib/main.dart
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_application_1/screens/map/SelectMeetingPointScreen.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
-import 'providers/community_provider.dart';
-import 'providers/admin_provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
 import 'auth/auth_modal.dart';
 import 'config/config.dart';
-import 'screens/home_screen.dart';
-import 'screens/trips_screen.dart';
-import 'screens/trip_details_screen.dart';
-import 'screens/profile_screen.dart';
-import 'screens/map/trip_location_view_screen.dart';
-import 'screens/map/saved_locations_screen.dart';
-import 'screens/community/community_screen.dart';
-import 'package:flutter_application_1/providers/map_state_provider.dart'; // ADD THIS
-
+import 'providers/admin_provider.dart';
+import 'providers/community_provider.dart';
+import 'providers/map_state_provider.dart';
+import 'screens/admin/admin_dashboard_screen.dart';
 import 'screens/booking_summary_screen.dart';
+import 'screens/community/community_screen.dart';
 import 'screens/explore_trips_screen.dart';
-import 'screens/splash/splash_screen.dart';
+import 'screens/home_screen.dart';
+import 'screens/map/saved_locations_screen.dart';
+import 'screens/map/trip_location_view_screen.dart';
 import 'screens/onboarding/onboarding_screen.dart';
-import 'screens/search/trip_search_screen.dart';
+import 'screens/profile_screen.dart';
 import 'screens/search/filters_screen.dart';
 import 'screens/search/search_results.dart';
-import 'screens/admin/admin_dashboard_screen.dart';
+import 'screens/search/trip_search_screen.dart';
+import 'screens/splash/splash_screen.dart';
+import 'screens/trip_details_screen.dart';
+import 'screens/trips_screen.dart';
 
 class SmoothScrollBehavior extends ScrollBehavior {
   @override
@@ -42,14 +41,12 @@ class SmoothScrollBehavior extends ScrollBehavior {
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Load environment variables
   try {
     await dotenv.load(fileName: ".env");
   } catch (e) {
     debugPrint("Error loading .env file: $e");
   }
 
-  // Initializing with your provided credentials
   await Supabase.initialize(
     url: 'https://jofcdkdoxhkjejgkdrbk.supabase.co',
     anonKey:
@@ -68,7 +65,6 @@ Future<void> main() async {
   );
 }
 
-// Global Supabase client for easy access across the app
 final supabase = Supabase.instance.client;
 
 class TravelHubApp extends StatefulWidget {
@@ -78,6 +74,7 @@ class TravelHubApp extends StatefulWidget {
 }
 
 class _TravelHubAppState extends State<TravelHubApp> {
+  // --- Global App State ---
   AppPage _currentPage = AppPage.home;
   AppPage _previousPage = AppPage.home;
   bool _isLoggedIn = false;
@@ -86,6 +83,53 @@ class _TravelHubAppState extends State<TravelHubApp> {
   Map<String, dynamic>? _selectedTrip;
   ThemeMode _themeMode = ThemeMode.light;
   int _tripsRefreshKey = 0;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // 1. Check existing session on boot
+    _checkInitialSession();
+
+    // 2. Continuous Auth Listener
+    supabase.auth.onAuthStateChange.listen((data) {
+      final session = data.session;
+      final user = session?.user;
+
+      if (mounted) {
+        setState(() {
+          if (user != null) {
+            _isLoggedIn = true;
+            // Detect if the user is an Admin from metadata
+            _isAdmin = user.userMetadata?['role'] == 'admin';
+
+            _currentUser = {
+              'name': user.userMetadata?['full_name'] ?? 'Traveler',
+              'email': user.email ?? '',
+            };
+          } else {
+            _isLoggedIn = false;
+            _isAdmin = false;
+            _currentUser = {};
+          }
+        });
+      }
+    });
+  }
+
+  void _checkInitialSession() {
+    final session = supabase.auth.currentSession;
+    if (session != null && session.user != null) {
+      setState(() {
+        _isLoggedIn = true;
+        _isAdmin = session.user.userMetadata?['role'] == 'admin';
+        _currentUser = {
+          'name': session.user.userMetadata?['full_name'] ?? 'Traveler',
+          'email': session.user.email ?? '',
+        };
+      });
+    }
+  }
 
   void _toggleTheme() {
     setState(() {
@@ -114,9 +158,7 @@ class _TravelHubAppState extends State<TravelHubApp> {
   }
 
   void _handleLogout() async {
-    if (!_isAdmin) {
-      await supabase.auth.signOut();
-    }
+    await supabase.auth.signOut();
     setState(() {
       _isLoggedIn = false;
       _isAdmin = false;
@@ -127,9 +169,6 @@ class _TravelHubAppState extends State<TravelHubApp> {
 
   void _navigateTo(AppPage page, {Map<String, dynamic>? trip}) {
     setState(() {
-      // Only update previous page if we are moving FROM a main screen (Home, Trips, Explore, etc.)
-      // and the target is different. This prevents sub-pages like 'Booking' from being
-      // set as the 'previousPage' for 'TripDetails'.
       final mainPages = [
         AppPage.home,
         AppPage.trips,
@@ -146,10 +185,7 @@ class _TravelHubAppState extends State<TravelHubApp> {
 
       _currentPage = page;
       if (trip != null) _selectedTrip = trip;
-      // Force trips screen to reload when navigating to it
-      if (page == AppPage.trips) {
-        _tripsRefreshKey++;
-      }
+      if (page == AppPage.trips) _tripsRefreshKey++;
     });
   }
 
@@ -164,6 +200,13 @@ class _TravelHubAppState extends State<TravelHubApp> {
   }
 
   Widget _getPage() {
+    // Persistent sync check for profile/admin
+    final user = supabase.auth.currentUser;
+    if (user != null) {
+      _isLoggedIn = true;
+      _isAdmin = user.userMetadata?['role'] == 'admin';
+    }
+
     switch (_currentPage) {
       case AppPage.home:
         return TravelHubHomeScreen(
@@ -181,6 +224,7 @@ class _TravelHubAppState extends State<TravelHubApp> {
           onThemeToggle: _toggleTheme,
         );
       case AppPage.map:
+      case AppPage.savedLocations:
         return SavedLocationsScreen(
           navigateTo: _navigateTo,
           isLoggedIn: _isLoggedIn,
@@ -197,43 +241,24 @@ class _TravelHubAppState extends State<TravelHubApp> {
           onThemeToggle: _toggleTheme,
         );
       case AppPage.tripDetails:
-        // Ensure we have trip data before loading the details screen
-        if (_selectedTrip == null) {
-          return const Center(child: Text("No trip selected. Return to Home."));
-        }
+        if (_selectedTrip == null)
+          return const Center(child: Text("No trip selected."));
         return TripDetailsScreen(
           trip: _selectedTrip!,
           navigateTo: _navigateTo,
           previousPage: _previousPage,
         );
       case AppPage.selectMeetingPoint:
-        if (_selectedTrip == null) {
-          return const Center(child: Text("No trip selected. Return to Home."));
-        }
         return SelectMeetingPointScreen(
           trip: _selectedTrip!,
           navigateTo: _navigateTo,
         );
       case AppPage.tripLocationView:
-        if (_selectedTrip == null) {
-          return const Center(child: Text("No trip selected. Return to Home."));
-        }
         return TripLocationViewScreen(
           trip: _selectedTrip!,
           navigateTo: _navigateTo,
         );
-      case AppPage.savedLocations:
-        return SavedLocationsScreen(
-          navigateTo: _navigateTo,
-          isLoggedIn: _isLoggedIn,
-          showAuthModal: _showAuthModal,
-          onThemeToggle: _toggleTheme,
-        );
-
       case AppPage.booking:
-        if (_selectedTrip == null) {
-          return const Center(child: Text("No trip selected. Return to Home."));
-        }
         return BookingSummaryScreen(
           trip: _selectedTrip!,
           navigateTo: _navigateTo,
@@ -254,6 +279,13 @@ class _TravelHubAppState extends State<TravelHubApp> {
         );
       case AppPage.adminDashboard:
         return AdminDashboardScreen(onLogout: _handleLogout);
+      default:
+        return TravelHubHomeScreen(
+          navigateTo: _navigateTo,
+          isLoggedIn: _isLoggedIn,
+          showAuthModal: _showAuthModal,
+          onThemeToggle: _toggleTheme,
+        );
     }
   }
 
@@ -291,16 +323,6 @@ class _TravelHubAppState extends State<TravelHubApp> {
               destination: args?['destination'] as String?,
               dateRange: args?['dateRange'] as DateTimeRange?,
               budget: args?['budget'] as double?,
-            ),
-          );
-        }
-        if (settings.name == '/trip-details') {
-          final trip = settings.arguments as Map<String, dynamic>;
-          return MaterialPageRoute(
-            builder: (context) => TripDetailsScreen(
-              trip: trip,
-              navigateTo: _navigateTo,
-              previousPage: _previousPage,
             ),
           );
         }
