@@ -1,11 +1,11 @@
-// ignore_for_file: deprecated_member_use
+// lib/screens/map/map_overview_screen_refactored.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:provider/provider.dart';
 import '../../config/config.dart';
 import '../../widgets/custom_app_bar.dart';
-import '../../services/trips_service.dart';
-import '../../services/ai_location_service.dart';
+import '../../providers/map_state_provider.dart';
 
 class MapOverviewScreen extends StatefulWidget {
   final Function(AppPage, {Map<String, dynamic>? trip}) navigateTo;
@@ -26,79 +26,30 @@ class MapOverviewScreen extends StatefulWidget {
 }
 
 class _MapOverviewScreenState extends State<MapOverviewScreen> {
-  String? _selectedTripId;
-  bool _showList = true;
   final MapController _mapController = MapController();
-  List<Map<String, dynamic>> _trips = [];
-  Map<String, Map<String, double>> _tripCoordinates = {};
-  bool _isLoading = true;
-  bool _isLoadingCoordinates = true;
+  bool _showList = true;
 
   @override
   void initState() {
     super.initState();
-    _loadTripsAndCoordinates();
-  }
-
-  Future<void> _loadTripsAndCoordinates() async {
-    setState(() {
-      _isLoading = true;
-      _isLoadingCoordinates = true;
+    // Load data when screen opens
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<MapStateProvider>().loadTripsAndCoordinates();
     });
-
-    try {
-      // Load trips first
-      final trips = await TripsService.getAllTrips();
-      setState(() {
-        _trips = trips;
-        _isLoading = false;
-      });
-
-      // Load coordinates dynamically using Gemini AI
-      final coordinates = await AILocationService.getBatchTripCoordinates(trips);
-      
-      setState(() {
-        _tripCoordinates = coordinates;
-        _isLoadingCoordinates = false;
-      });
-    } catch (e) {
-      setState(() {
-        _trips = fallbackTrips;
-        _isLoading = false;
-        _isLoadingCoordinates = false;
-      });
-      
-      // Load coordinates for fallback trips too
-      try {
-        final coordinates = await AILocationService.getBatchTripCoordinates(fallbackTrips);
-        setState(() {
-          _tripCoordinates = coordinates;
-        });
-      } catch (e) {
-        // If all fails, use empty map
-        setState(() {
-          _tripCoordinates = {};
-        });
-      }
-    }
   }
 
   void _onTripSelected(String tripId) {
-    setState(() {
-      _selectedTripId = tripId;
-    });
+    final provider = context.read<MapStateProvider>();
+    provider.selectTrip(tripId);
     
-    final location = _tripCoordinates[tripId];
-    if (location != null) {
-      _mapController.move(
-        LatLng(location['latitude']!, location['longitude']!),
-        8.0,
-      );
+    // Animate map to new position
+    if (provider.selectedTripId != null) {
+      _mapController.move(provider.mapCenter, provider.mapZoom);
     }
   }
 
   Future<void> _refreshData() async {
-    await _loadTripsAndCoordinates();
+    await context.read<MapStateProvider>().refresh();
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -122,8 +73,11 @@ class _MapOverviewScreenState extends State<MapOverviewScreen> {
           onThemeToggle: widget.onThemeToggle,
         ),
         Expanded(
-          child: _isLoading
-              ? const Center(
+          child: Consumer<MapStateProvider>(
+            builder: (context, mapProvider, child) {
+              // Loading state
+              if (mapProvider.loadingState == MapLoadingState.loadingTrips) {
+                return const Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -132,150 +86,172 @@ class _MapOverviewScreenState extends State<MapOverviewScreen> {
                       Text('Loading trips...'),
                     ],
                   ),
-                )
-              : LayoutBuilder(
-                  builder: (context, constraints) {
-                    bool isMobile = constraints.maxWidth < 900;
-                    
-                    if (isMobile) {
-                      return Stack(
-                        children: [
-                          _RealMapView(
-                            mapController: _mapController,
-                            selectedTripId: _selectedTripId,
-                            onMarkerTap: _onTripSelected,
-                            trips: _trips,
-                            tripCoordinates: _tripCoordinates,
-                            isLoadingCoordinates: _isLoadingCoordinates,
-                          ),
-                          if (_showList)
-                            DraggableScrollableSheet(
-                              initialChildSize: 0.4,
-                              minChildSize: 0.2,
-                              maxChildSize: 0.8,
-                              builder: (context, scrollController) {
-                                return Container(
-                                  decoration: BoxDecoration(
-                                    color: Theme.of(context).cardColor,
-                                    borderRadius: const BorderRadius.vertical(
-                                      top: Radius.circular(20),
-                                    ),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withOpacity(0.1),
-                                        blurRadius: 10,
-                                        offset: const Offset(0, -5),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Column(
-                                    children: [
-                                      const SizedBox(height: 12),
-                                      Container(
-                                        width: 40,
-                                        height: 4,
-                                        decoration: BoxDecoration(
-                                          color: Colors.grey.shade300,
-                                          borderRadius: BorderRadius.circular(2),
-                                        ),
-                                      ),
-                                      const SizedBox(height: 12),
-                                      Expanded(
-                                        child: _TripsList(
-                                          scrollController: scrollController,
-                                          selectedTripId: _selectedTripId,
-                                          onTripTap: _onTripSelected,
-                                          trips: _trips,
-                                          tripCoordinates: _tripCoordinates,
-                                          isLoadingCoordinates: _isLoadingCoordinates,
-                                          onViewDetails: (trip) {
-                                            widget.navigateTo(
-                                              AppPage.tripDetails,
-                                              trip: trip,
-                                            );
-                                          },
-                                          onRefresh: _refreshData,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              },
-                            ),
-                          Positioned(
-                            top: 16,
-                            right: 16,
-                            child: Column(
-                              children: [
-                                FloatingActionButton(
-                                  mini: true,
-                                  backgroundColor: Theme.of(context).cardColor,
-                                  onPressed: () {
-                                    setState(() => _showList = !_showList);
-                                  },
-                                  child: Icon(
-                                    _showList ? Icons.map : Icons.list,
-                                    color: primaryBlue,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                FloatingActionButton(
-                                  mini: true,
-                                  backgroundColor: Theme.of(context).cardColor,
-                                  onPressed: _refreshData,
-                                  child: const Icon(
-                                    Icons.refresh,
-                                    color: primaryBlue,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      );
-                    } else {
-                      return Row(
-                        children: [
-                          Expanded(
-                            flex: 2,
-                            child: _RealMapView(
-                              mapController: _mapController,
-                              selectedTripId: _selectedTripId,
-                              onMarkerTap: _onTripSelected,
-                              trips: _trips,
-                              tripCoordinates: _tripCoordinates,
-                              isLoadingCoordinates: _isLoadingCoordinates,
-                            ),
-                          ),
-                          Container(
-                            width: 400,
-                            decoration: BoxDecoration(
-                              color: Theme.of(context).cardColor,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.1),
-                                  blurRadius: 10,
-                                  offset: const Offset(-5, 0),
-                                ),
-                              ],
-                            ),
-                            child: _TripsList(
-                              selectedTripId: _selectedTripId,
-                              onTripTap: _onTripSelected,
-                              trips: _trips,
-                              tripCoordinates: _tripCoordinates,
-                              isLoadingCoordinates: _isLoadingCoordinates,
-                              onViewDetails: (trip) {
-                                widget.navigateTo(AppPage.tripDetails, trip: trip);
-                              },
-                              onRefresh: _refreshData,
-                            ),
-                          ),
-                        ],
-                      );
-                    }
-                  },
+                );
+              }
+
+              // Error state
+              if (mapProvider.hasError) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.error_outline, size: 60, color: Colors.red),
+                      const SizedBox(height: 16),
+                      Text('Error: ${mapProvider.errorMessage}'),
+                      const SizedBox(height: 24),
+                      ElevatedButton.icon(
+                        onPressed: () => mapProvider.loadTripsAndCoordinates(),
+                        icon: const Icon(Icons.refresh),
+                        label: const Text('Retry'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: primaryBlue,
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }
+
+              // Main layout
+              return LayoutBuilder(
+                builder: (context, constraints) {
+                  bool isMobile = constraints.maxWidth < 900;
+                  
+                  if (isMobile) {
+                    return _buildMobileLayout(mapProvider);
+                  } else {
+                    return _buildDesktopLayout(mapProvider);
+                  }
+                },
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMobileLayout(MapStateProvider mapProvider) {
+    return Stack(
+      children: [
+        _RealMapView(
+          mapController: _mapController,
+          mapProvider: mapProvider,
+          onMarkerTap: _onTripSelected,
+        ),
+        if (_showList)
+          DraggableScrollableSheet(
+            initialChildSize: 0.4,
+            minChildSize: 0.2,
+            maxChildSize: 0.8,
+            builder: (context, scrollController) {
+              return Container(
+                decoration: BoxDecoration(
+                  color: Theme.of(context).cardColor,
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(20),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 10,
+                      offset: const Offset(0, -5),
+                    ),
+                  ],
                 ),
+                child: Column(
+                  children: [
+                    const SizedBox(height: 12),
+                    Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Expanded(
+                      child: _TripsList(
+                        scrollController: scrollController,
+                        mapProvider: mapProvider,
+                        onTripTap: _onTripSelected,
+                        onViewDetails: (trip) {
+                          widget.navigateTo(AppPage.tripDetails, trip: trip);
+                        },
+                        onRefresh: _refreshData,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        Positioned(
+          top: 16,
+          right: 16,
+          child: Column(
+            children: [
+              FloatingActionButton(
+                mini: true,
+                backgroundColor: Theme.of(context).cardColor,
+                onPressed: () {
+                  setState(() => _showList = !_showList);
+                },
+                child: Icon(
+                  _showList ? Icons.map : Icons.list,
+                  color: primaryBlue,
+                ),
+              ),
+              const SizedBox(height: 8),
+              FloatingActionButton(
+                mini: true,
+                backgroundColor: Theme.of(context).cardColor,
+                onPressed: _refreshData,
+                child: const Icon(
+                  Icons.refresh,
+                  color: primaryBlue,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDesktopLayout(MapStateProvider mapProvider) {
+    return Row(
+      children: [
+        Expanded(
+          flex: 2,
+          child: _RealMapView(
+            mapController: _mapController,
+            mapProvider: mapProvider,
+            onMarkerTap: _onTripSelected,
+          ),
+        ),
+        Container(
+          width: 400,
+          decoration: BoxDecoration(
+            color: Theme.of(context).cardColor,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 10,
+                offset: const Offset(-5, 0),
+              ),
+            ],
+          ),
+          child: _TripsList(
+            mapProvider: mapProvider,
+            onTripTap: _onTripSelected,
+            onViewDetails: (trip) {
+              widget.navigateTo(AppPage.tripDetails, trip: trip);
+            },
+            onRefresh: _refreshData,
+          ),
         ),
       ],
     );
@@ -284,30 +260,21 @@ class _MapOverviewScreenState extends State<MapOverviewScreen> {
 
 class _RealMapView extends StatelessWidget {
   final MapController mapController;
-  final String? selectedTripId;
+  final MapStateProvider mapProvider;
   final Function(String) onMarkerTap;
-  final List<Map<String, dynamic>> trips;
-  final Map<String, Map<String, double>> tripCoordinates;
-  final bool isLoadingCoordinates;
 
   const _RealMapView({
     required this.mapController,
-    required this.selectedTripId,
+    required this.mapProvider,
     required this.onMarkerTap,
-    required this.trips,
-    required this.tripCoordinates,
-    required this.isLoadingCoordinates,
   });
 
   @override
   Widget build(BuildContext context) {
-    final markers = trips.where((trip) {
-      // Only show trips with loaded coordinates
-      return tripCoordinates.containsKey(trip['id']);
-    }).map((trip) {
-      final coords = tripCoordinates[trip['id']]!;
+    final markers = mapProvider.tripsWithCoordinates.map((trip) {
+      final coords = mapProvider.tripCoordinates[trip['id']]!;
       final location = LatLng(coords['latitude']!, coords['longitude']!);
-      final isSelected = selectedTripId == trip['id'];
+      final isSelected = mapProvider.selectedTripId == trip['id'];
       
       return Marker(
         point: location,
@@ -371,20 +338,13 @@ class _RealMapView extends StatelessWidget {
       );
     }).toList();
 
-    // Calculate initial center based on available coordinates
-    LatLng initialCenter = LatLng(20.0, 0.0);
-    if (tripCoordinates.isNotEmpty) {
-      final firstCoords = tripCoordinates.values.first;
-      initialCenter = LatLng(firstCoords['latitude']!, firstCoords['longitude']!);
-    }
-
     return Stack(
       children: [
         FlutterMap(
           mapController: mapController,
           options: MapOptions(
-            initialCenter: initialCenter,
-            initialZoom: 2.0,
+            initialCenter: mapProvider.mapCenter,
+            initialZoom: mapProvider.mapZoom,
             minZoom: 1.5,
             maxZoom: 18.0,
             interactiveFlags: InteractiveFlag.all,
@@ -393,7 +353,6 @@ class _RealMapView extends StatelessWidget {
             TileLayer(
               urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
               userAgentPackageName: 'com.travelhub.app',
-              tileProvider: NetworkTileProvider(),
             ),
             MarkerLayer(markers: markers),
             RichAttributionWidget(
@@ -403,7 +362,7 @@ class _RealMapView extends StatelessWidget {
             ),
           ],
         ),
-        if (isLoadingCoordinates)
+        if (mapProvider.loadingState == MapLoadingState.loadingCoordinates)
           Positioned(
             top: 16,
             left: 16,
@@ -431,9 +390,9 @@ class _RealMapView extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  const Text(
-                    'Loading locations...',
-                    style: TextStyle(
+                  Text(
+                    'Loading ${mapProvider.loadedCoordinatesCount}/${mapProvider.trips.length} locations...',
+                    style: const TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
                       color: primaryBlue,
@@ -449,22 +408,16 @@ class _RealMapView extends StatelessWidget {
 }
 
 class _TripsList extends StatelessWidget {
-  final String? selectedTripId;
+  final MapStateProvider mapProvider;
   final Function(String) onTripTap;
   final Function(Map<String, dynamic>) onViewDetails;
   final ScrollController? scrollController;
-  final List<Map<String, dynamic>> trips;
-  final Map<String, Map<String, double>> tripCoordinates;
-  final bool isLoadingCoordinates;
   final Future<void> Function() onRefresh;
 
   const _TripsList({
-    required this.selectedTripId,
+    required this.mapProvider,
     required this.onTripTap,
     required this.onViewDetails,
-    required this.trips,
-    required this.tripCoordinates,
-    required this.isLoadingCoordinates,
     required this.onRefresh,
     this.scrollController,
   });
@@ -494,23 +447,12 @@ class _TripsList extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '${trips.length} destinations available',
+                    '${mapProvider.trips.length} destinations',
                     style: const TextStyle(
                       fontSize: 14,
                       color: subtitleColor,
                     ),
                   ),
-                  if (isLoadingCoordinates) ...[
-                    const SizedBox(height: 4),
-                    const Text(
-                      'Loading coordinates...',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.orange,
-                        fontStyle: FontStyle.italic,
-                      ),
-                    ),
-                  ],
                 ],
               ),
               Container(
@@ -528,9 +470,9 @@ class _TripsList extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 20),
-          ...trips.map((trip) {
-            final isSelected = selectedTripId == trip['id'];
-            final hasCoordinates = tripCoordinates.containsKey(trip['id']);
+          ...mapProvider.trips.map((trip) {
+            final isSelected = mapProvider.selectedTripId == trip['id'];
+            final hasCoordinates = mapProvider.tripCoordinates.containsKey(trip['id']);
             
             return GestureDetector(
               onTap: hasCoordinates ? () => onTripTap(trip['id']) : null,
