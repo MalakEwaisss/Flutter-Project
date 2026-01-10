@@ -191,7 +191,7 @@ class _TripsScreenState extends State<TripsScreen> {
             ),
             const SizedBox(height: 30),
             ElevatedButton.icon(
-              onPressed: () => widget.navigateTo(AppPage.home),
+              onPressed: () => widget.navigateTo(AppPage.explore),
               icon: const Icon(Icons.explore),
               label: const Text('Explore Trips'),
               style: ElevatedButton.styleFrom(
