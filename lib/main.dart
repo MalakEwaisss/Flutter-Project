@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
 import 'providers/community_provider.dart';
+import 'providers/admin_provider.dart';
 import 'auth/auth_modal.dart';
 import 'config/config.dart';
 import 'screens/home_screen.dart';
@@ -24,6 +25,7 @@ import 'screens/onboarding/onboarding_screen.dart';
 import 'screens/search/trip_search_screen.dart';
 import 'screens/search/filters_screen.dart';
 import 'screens/search/search_results.dart';
+import 'screens/admin/admin_dashboard_screen.dart';
 
 class SmoothScrollBehavior extends ScrollBehavior {
   @override
@@ -59,6 +61,7 @@ Future<void> main() async {
       providers: [
         ChangeNotifierProvider(create: (_) => CommunityProvider()),
         ChangeNotifierProvider(create: (_) => MapStateProvider()),
+        ChangeNotifierProvider(create: (_) => AdminProvider()),
       ],
       child: const TravelHubApp(),
     ),
@@ -78,6 +81,7 @@ class _TravelHubAppState extends State<TravelHubApp> {
   AppPage _currentPage = AppPage.home;
   AppPage _previousPage = AppPage.home;
   bool _isLoggedIn = false;
+  bool _isAdmin = false;
   Map<String, String> _currentUser = {};
   Map<String, dynamic>? _selectedTrip;
   ThemeMode _themeMode = ThemeMode.light;
@@ -94,15 +98,28 @@ class _TravelHubAppState extends State<TravelHubApp> {
   void _handleLogin(Map<String, String> userData) {
     setState(() {
       _isLoggedIn = true;
+      _isAdmin = false;
       _currentUser = userData;
       _currentPage = AppPage.profile;
     });
   }
 
+  void _handleAdminLogin(Map<String, String> userData) {
+    setState(() {
+      _isLoggedIn = true;
+      _isAdmin = true;
+      _currentUser = userData;
+      _currentPage = AppPage.adminDashboard;
+    });
+  }
+
   void _handleLogout() async {
-    await supabase.auth.signOut();
+    if (!_isAdmin) {
+      await supabase.auth.signOut();
+    }
     setState(() {
       _isLoggedIn = false;
+      _isAdmin = false;
       _currentUser = {};
       _currentPage = AppPage.home;
     });
@@ -139,7 +156,10 @@ class _TravelHubAppState extends State<TravelHubApp> {
   void _showAuthModal(BuildContext context) {
     showDialog(
       context: context,
-      builder: (context) => AuthModal(onLoginSuccess: _handleLogin),
+      builder: (context) => AuthModal(
+        onLoginSuccess: _handleLogin,
+        onAdminLogin: _handleAdminLogin,
+      ),
     );
   }
 
@@ -232,6 +252,8 @@ class _TravelHubAppState extends State<TravelHubApp> {
           showAuthModal: _showAuthModal,
           onThemeToggle: _toggleTheme,
         );
+      case AppPage.adminDashboard:
+        return AdminDashboardScreen(onLogout: _handleLogout);
     }
   }
 
