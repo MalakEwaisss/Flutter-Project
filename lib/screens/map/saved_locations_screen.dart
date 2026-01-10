@@ -1,114 +1,14 @@
 // lib/screens/saved_locations_screen_improved.dart
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/models/location_category.dart';
+import 'package:flutter_application_1/models/saved_location.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
-import '../config/config.dart';
-import '../main.dart';
-import '../services/ai_location_service.dart';
+import '../../config/config.dart';
+import '../../main.dart';
+import '../../services/ai_location_service.dart';
 
-enum LocationCategory {
-  restaurant,
-  attraction,
-  hotel,
-  shopping,
-  nature,
-  transport,
-  other,
-}
 
-extension LocationCategoryExtension on LocationCategory {
-  String get displayName {
-    switch (this) {
-      case LocationCategory.restaurant:
-        return 'Restaurant';
-      case LocationCategory.attraction:
-        return 'Attraction';
-      case LocationCategory.hotel:
-        return 'Hotel';
-      case LocationCategory.shopping:
-        return 'Shopping';
-      case LocationCategory.nature:
-        return 'Nature';
-      case LocationCategory.transport:
-        return 'Transport';
-      case LocationCategory.other:
-        return 'Other';
-    }
-  }
-
-  IconData get icon {
-    switch (this) {
-      case LocationCategory.restaurant:
-        return Icons.restaurant;
-      case LocationCategory.attraction:
-        return Icons.attractions;
-      case LocationCategory.hotel:
-        return Icons.hotel;
-      case LocationCategory.shopping:
-        return Icons.shopping_bag;
-      case LocationCategory.nature:
-        return Icons.park;
-      case LocationCategory.transport:
-        return Icons.directions_bus;
-      case LocationCategory.other:
-        return Icons.place;
-    }
-  }
-
-  Color get color {
-    switch (this) {
-      case LocationCategory.restaurant:
-        return const Color(0xFFE91E63);
-      case LocationCategory.attraction:
-        return const Color(0xFF9C27B0);
-      case LocationCategory.hotel:
-        return const Color(0xFF2196F3);
-      case LocationCategory.shopping:
-        return const Color(0xFFFF9800);
-      case LocationCategory.nature:
-        return const Color(0xFF4CAF50);
-      case LocationCategory.transport:
-        return const Color(0xFF607D8B);
-      case LocationCategory.other:
-        return const Color(0xFF795548);
-    }
-  }
-}
-
-class SavedLocation {
-  final String id;
-  final String name;
-  final String description;
-  final LatLng location;
-  final LocationCategory category;
-  final String? notes;
-  final DateTime savedAt;
-
-  SavedLocation({
-    required this.id,
-    required this.name,
-    required this.description,
-    required this.location,
-    required this.category,
-    this.notes,
-    required this.savedAt,
-  });
-
-  factory SavedLocation.fromJson(Map<String, dynamic> json) {
-    return SavedLocation(
-      id: json['id'].toString(),
-      name: json['name'],
-      description: json['description'],
-      location: LatLng(json['latitude'], json['longitude']),
-      category: LocationCategory.values.firstWhere(
-        (e) => e.name == json['category'],
-        orElse: () => LocationCategory.other,
-      ),
-      notes: json['notes'],
-      savedAt: DateTime.parse(json['saved_at']),
-    );
-  }
-}
 
 class SavedLocationsScreen extends StatefulWidget {
   final Function(AppPage, {Map<String, dynamic>? trip}) navigateTo;

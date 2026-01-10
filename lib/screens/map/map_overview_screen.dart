@@ -2,10 +2,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
-import '../config/config.dart';
-import '../widgets/custom_app_bar.dart';
-import '../services/trips_service.dart';
-import '../services/ai_location_service.dart';
+import '../../config/config.dart';
+import '../../widgets/custom_app_bar.dart';
+import '../../services/trips_service.dart';
+import '../../services/ai_location_service.dart';
 
 class MapOverviewScreen extends StatefulWidget {
   final Function(AppPage, {Map<String, dynamic>? trip}) navigateTo;

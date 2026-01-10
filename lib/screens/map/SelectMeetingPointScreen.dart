@@ -1,53 +1,11 @@
 // lib/screens/SelectMeetingPointScreen.dart
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/models/meeting_point.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
-import '../config/config.dart';
-import '../services/ai_location_service.dart';
+import '../../config/config.dart';
+import '../../services/ai_location_service.dart';
 
-class MeetingPoint {
-  final String id;
-  final String name;
-  final String description;
-  final LatLng location;
-  final IconData icon;
-
-  MeetingPoint({
-    required this.id,
-    required this.name,
-    required this.description,
-    required this.location,
-    required this.icon,
-  });
-
-  factory MeetingPoint.fromJson(Map<String, dynamic> json) {
-    return MeetingPoint(
-      id: json['id'].toString(),
-      name: json['name'],
-      description: json['description'] ?? '',
-      location: LatLng(
-        double.parse(json['latitude'].toString()),
-        double.parse(json['longitude'].toString()),
-      ),
-      icon: _getIcon(json['icon_type']),
-    );
-  }
-
-  static IconData _getIcon(String? type) {
-    switch (type) {
-      case 'airport':
-        return Icons.flight;
-      case 'train':
-        return Icons.train;
-      case 'landmark':
-        return Icons.tour;
-      case 'hotel':
-        return Icons.hotel;
-      default:
-        return Icons.place;
-    }
-  }
-}
 
 class SelectMeetingPointScreen extends StatefulWidget {
   final Map<String, dynamic> trip;

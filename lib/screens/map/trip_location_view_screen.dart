@@ -1,28 +1,11 @@
 // ignore_for_file: deprecated_member_use
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/models/day_location.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
-import '../config/config.dart';
-import '../services/ai_location_service.dart'; // Add this import
+import '../../config/config.dart';
+import '../../services/ai_location_service.dart'; // Add this import
 
-// Day location model
-class DayLocation {
-  final int day;
-  final String title;
-  final String description;
-  final LatLng location;
-  final List<String> activities;
-  final String time;
-
-  DayLocation({
-    required this.day,
-    required this.title,
-    required this.description,
-    required this.location,
-    required this.activities,
-    required this.time,
-  });
-}
 
 class TripLocationViewScreen extends StatefulWidget {
   final Map<String, dynamic> trip;

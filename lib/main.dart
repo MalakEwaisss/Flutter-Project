@@ -1,7 +1,9 @@
 // lib/main.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_application_1/screens/SelectMeetingPointScreen.dart';
+import 'package:flutter_application_1/providers/saved_locations_provider.dart';
+import 'package:flutter_application_1/providers/trip_locations_provider.dart';
+import 'package:flutter_application_1/screens/map/SelectMeetingPointScreen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
@@ -12,9 +14,9 @@ import 'screens/home_screen.dart';
 import 'screens/trips_screen.dart';
 import 'screens/trip_details_screen.dart';
 import 'screens/profile_screen.dart';
-import 'screens/map_overview_screen.dart';
-import 'screens/trip_location_view_screen.dart';
-import 'screens/saved_locations_screen.dart';
+import 'screens/map/map_overview_screen.dart';
+import 'screens/map/trip_location_view_screen.dart';
+import 'screens/map/saved_locations_screen.dart';
 import 'screens/community/community_screen.dart';
 
 import 'screens/booking_summary_screen.dart';
@@ -58,6 +60,8 @@ Future<void> main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => CommunityProvider()),
+      ChangeNotifierProvider(create: (_) => SavedLocationsProvider()),  
+      ChangeNotifierProvider(create: (_) => TripLocationsProvider()),   
       ],
       child: const TravelHubApp(),
     ),
