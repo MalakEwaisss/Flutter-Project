@@ -25,7 +25,6 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
   String _selectedTab = 'overview';
   bool _isFavorited = false;
   bool _isCheckingFavorite = true;
-  DateTime? _selectedDate;
 
   @override
   void initState() {
@@ -33,8 +32,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     _checkFavoriteStatus();
   }
 
-//Checking favorite status
-
+  //Checking favorite status
 
   Future<void> _checkFavoriteStatus() async {
     final user = supabase.auth.currentUser;
@@ -66,13 +64,12 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     }
   }
 
-//Posting to database
-
+  //Posting to database
 
   Future<void> _toggleFavorite() async {
     final user = supabase.auth.currentUser;
     if (user == null) {
-      ScaffoldMessenger.of(context).showSnackBar( 
+      ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Please sign in to favorite trips'),
           backgroundColor: Colors.orange,
@@ -129,7 +126,6 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
       );
     }
   }
-
 
   void _selectTab(String tab) {
     setState(() {

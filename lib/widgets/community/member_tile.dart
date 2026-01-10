@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/config/constants.dart';
 import 'package:flutter_application_1/models/group_member.dart';
-import 'package:flutter_application_1/models/user_profile.dart';
 
 class MemberTile extends StatelessWidget {
   final GroupMember member;
@@ -33,10 +32,7 @@ class MemberTile extends StatelessWidget {
         ),
       ),
       child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 8,
-        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         leading: CircleAvatar(
           radius: 28,
           backgroundColor: primaryBlue.withOpacity(0.1),
@@ -70,10 +66,7 @@ class MemberTile extends StatelessWidget {
             ),
             if (isCurrentUser)
               Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 8,
-                  vertical: 4,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
                   color: successGreen.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(12),
@@ -95,19 +88,13 @@ class MemberTile extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               member.userEmail,
-              style: const TextStyle(
-                fontSize: 13,
-                color: subtitleColor,
-              ),
+              style: const TextStyle(fontSize: 13, color: subtitleColor),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
             const SizedBox(height: 8),
             Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 10,
-                vertical: 4,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
                 color: member.isOwner
                     ? accentOrange.withOpacity(0.1)
@@ -151,10 +138,6 @@ class MemberTile extends StatelessWidget {
   }
 
   Widget _buildAvatarPlaceholder() {
-    return Icon(
-      Icons.person,
-      size: 32,
-      color: primaryBlue.withOpacity(0.5),
-    );
+    return Icon(Icons.person, size: 32, color: primaryBlue.withOpacity(0.5));
   }
 }

@@ -6,7 +6,6 @@ import 'package:latlong2/latlong.dart';
 import '../../config/config.dart';
 import '../../services/ai_location_service.dart';
 
-
 class SelectMeetingPointScreen extends StatefulWidget {
   final Map<String, dynamic> trip;
   final Function(AppPage, {Map<String, dynamic>? trip}) navigateTo;
@@ -95,9 +94,11 @@ class _SelectMeetingPointScreenState extends State<SelectMeetingPointScreen> {
         _filteredPoints = _popularMeetingPoints;
       } else {
         _filteredPoints = _popularMeetingPoints
-            .where((point) =>
-                point.name.toLowerCase().contains(query.toLowerCase()) ||
-                point.description.toLowerCase().contains(query.toLowerCase()))
+            .where(
+              (point) =>
+                  point.name.toLowerCase().contains(query.toLowerCase()) ||
+                  point.description.toLowerCase().contains(query.toLowerCase()),
+            )
             .toList();
       }
     });
@@ -153,9 +154,7 @@ class _SelectMeetingPointScreenState extends State<SelectMeetingPointScreen> {
           : LayoutBuilder(
               builder: (context, constraints) {
                 bool isMobile = constraints.maxWidth < 900;
-                return isMobile
-                    ? _buildMobileLayout()
-                    : _buildDesktopLayout();
+                return isMobile ? _buildMobileLayout() : _buildDesktopLayout();
               },
             ),
     );
@@ -165,12 +164,7 @@ class _SelectMeetingPointScreenState extends State<SelectMeetingPointScreen> {
     return Stack(
       children: [
         _buildMap(),
-        Positioned(
-          top: 16,
-          left: 16,
-          right: 16,
-          child: _buildSearchBar(),
-        ),
+        Positioned(top: 16, left: 16, right: 16, child: _buildSearchBar()),
         DraggableScrollableSheet(
           initialChildSize: 0.35,
           minChildSize: 0.2,
@@ -179,8 +173,9 @@ class _SelectMeetingPointScreenState extends State<SelectMeetingPointScreen> {
             return Container(
               decoration: BoxDecoration(
                 color: Theme.of(context).cardColor,
-                borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(20)),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(20),
+                ),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withOpacity(0.1),
@@ -299,6 +294,7 @@ class _SelectMeetingPointScreenState extends State<SelectMeetingPointScreen> {
                 ),
               );
             }),
+            // Custom selected location
             if (_selectedLocation != null && _isCustomLocation)
               Marker(
                 point: _selectedLocation!,
@@ -323,10 +319,7 @@ class _SelectMeetingPointScreenState extends State<SelectMeetingPointScreen> {
         color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 8,
-          ),
+          BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 8),
         ],
       ),
       child: TextField(
@@ -543,8 +536,9 @@ class _SelectMeetingPointScreenState extends State<SelectMeetingPointScreen> {
             child: ElevatedButton(
               onPressed: _confirmMeetingPoint,
               style: ElevatedButton.styleFrom(
-                backgroundColor:
-                    _selectedLocation != null ? accentOrange : Colors.grey,
+                backgroundColor: _selectedLocation != null
+                    ? accentOrange
+                    : Colors.grey,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
