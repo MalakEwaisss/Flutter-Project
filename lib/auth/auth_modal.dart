@@ -28,6 +28,7 @@ class _AuthModalState extends State<AuthModal> {
     final password = _passwordController.text.trim();
     final name = _nameController.text.trim();
 
+    // Ben-check en el user mally kol el khanat
     if (email.isEmpty || password.isEmpty || (!_isLoginMode && name.isEmpty)) {
       ScaffoldMessenger.of(
         context,
@@ -35,11 +36,12 @@ class _AuthModalState extends State<AuthModal> {
       return;
     }
 
-    setState(() => _isLoading = true);
+    setState(() => _isLoading = true); // Ebda2 el loading circle
 
     try {
       if (_isLoginMode) {
-        // 1. CHECK FOR ADMIN CREDENTIALS FIRST (Team Logic)
+        // --- 1. ADMIN CHECK ---
+        // Ben-shof law el email wel pass bto3 el admin elly el team 7addethom
         if (email.toLowerCase() == 'admin@travilo.app' && password == 'admin') {
           if (widget.onAdminLogin != null) {
             widget.onAdminLogin!({'name': 'Admin', 'email': email});
@@ -48,14 +50,15 @@ class _AuthModalState extends State<AuthModal> {
           return;
         }
 
-        // 2. REGULAR USER LOGIN LOGIC
+        // --- 2. REGULAR USER LOGIN ---
         final AuthResponse res = await supabase.auth.signInWithPassword(
           email: email,
           password: password,
         );
 
         if (res.user != null) {
-          // --- PROFILE FIX: Give Supabase time to persist the session ---
+          // [FIX]: Ben-edi el app 500ms 3ashan y-save el session (token) 
+          // fel memory, 3ashan el profile may-ollsh "login" tany.
           await Future.delayed(const Duration(milliseconds: 500));
 
           if (mounted) {
@@ -67,16 +70,16 @@ class _AuthModalState extends State<AuthModal> {
           }
         }
       } else {
-        // 3. SIGN UP LOGIC
+        // --- 3. SIGN UP LOGIC ---
         final AuthResponse res = await supabase.auth.signUp(
           email: email,
           password: password,
-          data: {'full_name': name},
+          data: {'full_name': name}, // Store el esm fel metadata bta3et Supabase
         );
 
         if (res.user != null) {
+          // Law res.session null, dah ma3nah en el user lazim y-confirm el email
           if (res.session == null) {
-            // Email confirmation is required
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
                 content: Text('Check your email for a confirmation link!'),
@@ -84,7 +87,7 @@ class _AuthModalState extends State<AuthModal> {
               ),
             );
           } else {
-            // --- PROFILE FIX: Session exists, wait for it to be ready ---
+            // [FIX]: Nafs el khattwa elly fo2, lazim n-estanna el session tet-sayeet.
             await Future.delayed(const Duration(milliseconds: 500));
             widget.onLoginSuccess({'name': name, 'email': email});
           }
@@ -92,14 +95,17 @@ class _AuthModalState extends State<AuthModal> {
         }
       }
     } on AuthException catch (error) {
+      // Law fih error men Supabase (zay password ghalat)
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(error.message), backgroundColor: Colors.red),
       );
     } catch (error) {
+      // Ay error tany ghair motawaqe3
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('An unexpected error occurred')),
       );
     } finally {
+      // Wa2af el loading loading circle f-kol el 7alat
       if (mounted) setState(() => _isLoading = false);
     }
   }
@@ -109,7 +115,7 @@ class _AuthModalState extends State<AuthModal> {
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: SingleChildScrollView(
-        // Added to prevent overflow on keyboard popup
+        // [FIX]: 3ashan el Keyboard lama yetla3 may-e3melsh overflow error (yellow lines)
         child: Padding(
           padding: const EdgeInsets.all(24.0),
           child: Column(
@@ -124,6 +130,8 @@ class _AuthModalState extends State<AuthModal> {
                 ),
               ),
               const SizedBox(height: 20),
+              
+              // TextField el esm bey-ban fel Sign Up bas
               if (!_isLoginMode)
                 TextField(
                   controller: _nameController,
@@ -134,6 +142,7 @@ class _AuthModalState extends State<AuthModal> {
                   ),
                 ),
               const SizedBox(height: 15),
+              
               TextField(
                 controller: _emailController,
                 keyboardType: TextInputType.emailAddress,
@@ -144,9 +153,10 @@ class _AuthModalState extends State<AuthModal> {
                 ),
               ),
               const SizedBox(height: 15),
+              
               TextField(
                 controller: _passwordController,
-                obscureText: true,
+                obscureText: true, // 3ashan el password may-bansh
                 decoration: const InputDecoration(
                   hintText: 'Password',
                   prefixIcon: Icon(Icons.lock),
@@ -154,6 +164,7 @@ class _AuthModalState extends State<AuthModal> {
                 ),
               ),
               const SizedBox(height: 25),
+              
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
@@ -184,6 +195,8 @@ class _AuthModalState extends State<AuthModal> {
                         ),
                 ),
               ),
+              
+              // Text button 3ashan ne-ghayar bin el Login wel Signup
               TextButton(
                 onPressed: () => setState(() => _isLoginMode = !_isLoginMode),
                 child: Text(

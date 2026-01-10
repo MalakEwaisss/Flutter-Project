@@ -26,6 +26,7 @@ import 'screens/splash/splash_screen.dart';
 import 'screens/trip_details_screen.dart';
 import 'screens/trips_screen.dart';
 
+// [Franco]: Custom scroll behavior 3ashan el app ykon "smooth" f-el mobile mesh zay el web
 class SmoothScrollBehavior extends ScrollBehavior {
   @override
   Widget buildOverscrollIndicator(
@@ -41,12 +42,14 @@ class SmoothScrollBehavior extends ScrollBehavior {
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Loading env variables (zay el keys bta3et supabase law maktoba f-milaf kharigy)
   try {
     await dotenv.load(fileName: ".env");
   } catch (e) {
     debugPrint("Error loading .env file: $e");
   }
 
+  // Initializing Supabase - dah elly bey-rabat el app bel database
   await Supabase.initialize(
     url: 'https://jofcdkdoxhkjejgkdrbk.supabase.co',
     anonKey:
@@ -65,6 +68,7 @@ Future<void> main() async {
   );
 }
 
+// Global client 3ashan nesta3melo f-ay makan fel app mn gher re-init
 final supabase = Supabase.instance.client;
 
 class TravelHubApp extends StatefulWidget {
@@ -82,16 +86,20 @@ class _TravelHubAppState extends State<TravelHubApp> {
   Map<String, String> _currentUser = {};
   Map<String, dynamic>? _selectedTrip;
   ThemeMode _themeMode = ThemeMode.light;
-  int _tripsRefreshKey = 0;
+  int _tripsRefreshKey =
+      0; // 3ashan n-force refresh lel trips screen lama trga3lha
 
   @override
   void initState() {
     super.initState();
 
-    // 1. Check existing session on boot
+    // [Franco]: 1. Check session awel ma el app yeftah (Persistence)
+    // Dah bey-shof law fih token m-7foz fel phone 3ashan may-ollosh "login" tany
     _checkInitialSession();
 
-    // 2. Continuous Auth Listener
+    // [Franco]: 2. Auth Listener - dah el "Ear" bta3et el app
+    // Bey-esma3 le supabase tol el wa2t, law el user 3amal login aw logout
+    // el state btet-ghayar automatic f-kol el pages.
     supabase.auth.onAuthStateChange.listen((data) {
       final session = data.session;
       final user = session?.user;
@@ -100,7 +108,7 @@ class _TravelHubAppState extends State<TravelHubApp> {
         setState(() {
           if (user != null) {
             _isLoggedIn = true;
-            // Detect if the user is an Admin from metadata
+            // [Franco]: Ben-check el role mn el metadata elly f-supabase
             _isAdmin = user.userMetadata?['role'] == 'admin';
 
             _currentUser = {
@@ -108,6 +116,7 @@ class _TravelHubAppState extends State<TravelHubApp> {
               'email': user.email ?? '',
             };
           } else {
+            // Law el session kholset aw 3amal logout
             _isLoggedIn = false;
             _isAdmin = false;
             _currentUser = {};
@@ -117,6 +126,7 @@ class _TravelHubAppState extends State<TravelHubApp> {
     });
   }
 
+  // [Franco]: Function bte-check el session el-7alya mn supabase direct awel ma el app y-start
   void _checkInitialSession() {
     final session = supabase.auth.currentSession;
     if (session != null && session.user != null) {
@@ -139,12 +149,13 @@ class _TravelHubAppState extends State<TravelHubApp> {
     });
   }
 
+  // [Franco]: Function de bttnada mn el AuthModal lama el login y-ngat7
   void _handleLogin(Map<String, String> userData) {
     setState(() {
       _isLoggedIn = true;
       _isAdmin = false;
       _currentUser = userData;
-      _currentPage = AppPage.profile;
+      _currentPage = AppPage.profile; // Weddih el profile 3alatool
     });
   }
 
@@ -158,6 +169,7 @@ class _TravelHubAppState extends State<TravelHubApp> {
   }
 
   void _handleLogout() async {
+    // [Franco]: Signout mn supabase lazim 3ashan el token yet-mesah mn el phone
     await supabase.auth.signOut();
     setState(() {
       _isLoggedIn = false;
@@ -167,6 +179,7 @@ class _TravelHubAppState extends State<TravelHubApp> {
     });
   }
 
+  // [Franco]: El "Custom Router" bta3na 3ashan n-control el pages statefuly
   void _navigateTo(AppPage page, {Map<String, dynamic>? trip}) {
     setState(() {
       final mainPages = [
@@ -179,12 +192,15 @@ class _TravelHubAppState extends State<TravelHubApp> {
         AppPage.community,
       ];
 
+      // Save previous page 3ashan na3raf nerga3 feen (zay trip details -> home)
       if (page != _currentPage && mainPages.contains(_currentPage)) {
         _previousPage = _currentPage;
       }
 
       _currentPage = page;
       if (trip != null) _selectedTrip = trip;
+
+      // Law rayeh el trips, zawed el key 3ashan ya3mel re-fetch lel data
       if (page == AppPage.trips) _tripsRefreshKey++;
     });
   }
@@ -199,8 +215,9 @@ class _TravelHubAppState extends State<TravelHubApp> {
     );
   }
 
+  // [Franco]: El Logic bta3 el "Body" bta3 el app m-m-sok hna
   Widget _getPage() {
-    // Persistent sync check for profile/admin
+    // [Franco]: Extra Sync check 3ashan el profile may-shofsh data adima
     final user = supabase.auth.currentUser;
     if (user != null) {
       _isLoggedIn = true;
@@ -316,6 +333,7 @@ class _TravelHubAppState extends State<TravelHubApp> {
         '/home': (context) => Scaffold(body: _getPage()),
       },
       onGenerateRoute: (settings) {
+        // [Franco]: Dynamic routing lel search results ma3 pass el arguments
         if (settings.name == '/search-results') {
           final args = settings.arguments as Map<String, dynamic>?;
           return MaterialPageRoute(
