@@ -45,7 +45,11 @@ class TravelHubHomeScreen extends StatelessWidget {
     );
   }
 }
-
+//El _HeroSection maktoba StatelessWidget le-sababen mohemmeen
+//de heyya el "Header" aw awel goze2 bey-ban fel HomeScreen. Heyya elly fiha el "Identity" bta3et el app w el interaction el awwalany ma3 el user.
+//1. El Data gayya men "Barra" (Data Flow)
+//2. El Performance (Efficiency)
+//El Stateless widgets b-tkoun "Khafifa" (Lightweight)
 class _HeroSection extends StatelessWidget {
   final Function(AppPage, {Map<String, dynamic>? trip}) navigateTo;
   final bool isLoggedIn;
