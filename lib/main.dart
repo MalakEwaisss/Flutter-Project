@@ -25,7 +25,7 @@ import 'screens/search/trip_search_screen.dart';
 import 'screens/splash/splash_screen.dart';
 import 'screens/trip_details_screen.dart';
 import 'screens/trips_screen.dart';
-
+import 'screens/map/map_overview_screen.dart';
 // [Franco]: Custom scroll behavior 3ashan el app ykon "smooth" f-el mobile mesh zay el web
 class SmoothScrollBehavior extends ScrollBehavior {
   @override
@@ -241,8 +241,7 @@ class _TravelHubAppState extends State<TravelHubApp> {
           onThemeToggle: _toggleTheme,
         );
       case AppPage.map:
-      case AppPage.savedLocations:
-        return SavedLocationsScreen(
+        return MapOverviewScreen(
           navigateTo: _navigateTo,
           isLoggedIn: _isLoggedIn,
           showAuthModal: _showAuthModal,
@@ -268,6 +267,13 @@ class _TravelHubAppState extends State<TravelHubApp> {
       case AppPage.selectMeetingPoint:
         return SelectMeetingPointScreen(
           trip: _selectedTrip!,
+          navigateTo: _navigateTo,
+        );
+        case AppPage.savedLocations:
+        return SavedLocationsScreen(
+          isLoggedIn: _isLoggedIn,
+          showAuthModal: _showAuthModal,
+          onThemeToggle: _toggleTheme,
           navigateTo: _navigateTo,
         );
       case AppPage.tripLocationView:
