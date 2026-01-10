@@ -215,9 +215,9 @@ class _TravelHubAppState extends State<TravelHubApp> {
     );
   }
 
-  // [Franco]: El Logic bta3 el "Body" bta3 el app m-m-sok hna
+  // [Franco]: El Logic bta3 el "Body" bta3 el app mmsok hna
   Widget _getPage() {
-    // [Franco]: Extra Sync check 3ashan el profile may-shofsh data adima
+    // [Franco]: Extra Sync check 3ashan el profile mayshofsh data adima
     final user = supabase.auth.currentUser;
     if (user != null) {
       _isLoggedIn = true;

@@ -9,7 +9,7 @@ import '../services/trips_service.dart';
 // De "shortcut" 3ashan badal ma nekteb el function el twila de kol marra
 typedef ShowAuthModal = void Function(BuildContext context);
 
-// El Home Screen: de StatelessWidget ya3ni shakl sabet maby-ghayarshe halto
+// El Home Screen: de StatelessWidget ya3ni shakl sabet mabyghayarshe halto
 class TravelHubHomeScreen extends StatelessWidget {
   final Function(AppPage, {Map<String, dynamic>? trip}) navigateTo;
   final bool isLoggedIn;
@@ -185,7 +185,7 @@ class _PopularTripsSectionState extends State<_PopularTripsSection> {
           ],
         ),
         const SizedBox(height: 20),
-        if (_isLoading) // Warrilo da2era btel-ef law lassa be-y-load
+        if (_isLoading) // Warrilo circle btel-ef law lassa be-y-load
           const Center(child: Padding(padding: EdgeInsets.all(40), child: CircularProgressIndicator()))
         else
           SizedBox(
@@ -245,7 +245,7 @@ class _WhoWeAreSection extends StatelessWidget {
     );
   }
 
-  Widget _buildImage() => ClipRRect( // Sora men el net be-hwaf medawara
+  Widget _buildImage() => ClipRRect( // Sora men el net 
     borderRadius: BorderRadius.circular(15),
     child: Image.network(
       'https://images.unsplash.com/photo-1549897411-b06572cdf806?q=80&w=1974&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',

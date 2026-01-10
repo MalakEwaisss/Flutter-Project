@@ -22,6 +22,7 @@ class CustomAppBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
+        // [Franco]: Law el shasha soghayara (zay el mobile), esta3mel el compact menu
         final bool isCompact = constraints.maxWidth < 900;
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -45,6 +46,7 @@ class CustomAppBar extends StatelessWidget {
     );
   }
 
+  // [Franco]: Menu el Web aw el shashat el kebira
   Widget _buildFullMenu(BuildContext context) {
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -71,11 +73,12 @@ class CustomAppBar extends StatelessWidget {
         ),
         const SizedBox(width: 8),
         
-        // --- EL TAGHYIR HENA ---
+        // [Franco]: El zorar dah bey-ghayar shaklo (Sign In vs Profile)
+        // 3ala 7asab el user logged in wala la2
         ElevatedButton(
           onPressed: isLoggedIn 
               ? () => navigateTo(AppPage.profile) // Law logged in, rooh el profile
-              : onAuthAction,                   // Law la2, talle3 el modal
+              : onAuthAction,                   // Law la2, talle3 el auth modal
           style: ElevatedButton.styleFrom(
             backgroundColor: primaryBlue,
             foregroundColor: Colors.white,
@@ -87,6 +90,7 @@ class CustomAppBar extends StatelessWidget {
     );
   }
 
+  // [Franco]: Menu el Mobile (Dropdown menu)
   Widget _buildCompactMenu(BuildContext context) {
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -110,12 +114,12 @@ class CustomAppBar extends StatelessWidget {
           icon: const Icon(Icons.menu, color: primaryBlue),
           tooltip: 'Menu',
           onSelected: (AppPage page) {
-            // --- EL TAGHYIR HENA ---
+            // [Franco]: Hena law ekhtar "Profile/Sign In" men el menu el soghayara
             if (page == AppPage.profile) {
               if (isLoggedIn) {
-                navigateTo(AppPage.profile); // Law logged in, navigate
+                navigateTo(AppPage.profile);
               } else {
-                onAuthAction(); // Law la2, show modal
+                onAuthAction();
               }
             } else {
               navigateTo(page);
@@ -132,6 +136,7 @@ class CustomAppBar extends StatelessWidget {
               value: AppPage.profile,
               child: Row(
                 children: [
+                  // [Franco]: Icon btet-ghayar 7asab el login state
                   Icon(isLoggedIn ? Icons.person : Icons.login, color: primaryBlue, size: 20),
                   const SizedBox(width: 12),
                   Text(
@@ -153,6 +158,7 @@ class CustomAppBar extends StatelessWidget {
       value: page,
       child: Row(
         children: [
+          // [Franco]: Law el saf7a de heyya elly maftoo7a, khalli el icon orange
           Icon(icon, color: isActive ? accentOrange : primaryBlue, size: 20),
           const SizedBox(width: 12),
           Text(
