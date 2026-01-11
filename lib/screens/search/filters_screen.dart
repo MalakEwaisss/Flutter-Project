@@ -213,7 +213,7 @@ class _TripTypeChip extends StatelessWidget {
               _getIconForType(label),
               color: isSelected
                   ? Colors.white
-                  : Theme.of(context).colorScheme.onBackground,
+                  : Theme.of(context).colorScheme.onSurface,
               size: 28,
             ),
             const SizedBox(height: 4),
@@ -222,7 +222,7 @@ class _TripTypeChip extends StatelessWidget {
               style: TextStyle(
                 color: isSelected
                     ? Colors.white
-                    : Theme.of(context).colorScheme.onBackground,
+                    : Theme.of(context).colorScheme.onSurface,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                 fontSize: 14,
               ),

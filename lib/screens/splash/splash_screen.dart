@@ -58,6 +58,7 @@ class _SplashScreenState extends State<SplashScreen>
             colors: [Color(0xFF1E3A8A), Color(0xFF3B82F6)],
           ),
         ),
+
         child: Center(
           child: FadeTransition(
             opacity: _fadeAnimation,
@@ -80,6 +81,7 @@ class _SplashScreenState extends State<SplashScreen>
                         ),
                       ],
                     ),
+
                     child: Icon(
                       Icons.flight_takeoff,
                       size: 45,
@@ -87,6 +89,7 @@ class _SplashScreenState extends State<SplashScreen>
                     ),
                   ),
                   const SizedBox(height: 24),
+
                   Text(
                     'Travio',
                     style: Theme.of(context).textTheme.displaySmall?.copyWith(
@@ -96,6 +99,7 @@ class _SplashScreenState extends State<SplashScreen>
                     ),
                   ),
                   const SizedBox(height: 8),
+
                   Text(
                     'Your Journey Begins Here',
                     style: Theme.of(context).textTheme.bodyLarge?.copyWith(

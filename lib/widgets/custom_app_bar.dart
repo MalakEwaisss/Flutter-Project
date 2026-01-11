@@ -22,15 +22,13 @@ class CustomAppBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        // Determine if we need a compact layout
+        // [Franco]: Law el shasha soghayara (zay el mobile), esta3mel el compact menu
         final bool isCompact = constraints.maxWidth < 900;
-
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           color: Theme.of(context).scaffoldBackgroundColor,
           child: Row(
             children: [
-              // Logo
               const Text(
                 'Travio',
                 style: TextStyle(
@@ -40,13 +38,7 @@ class CustomAppBar extends StatelessWidget {
                 ),
               ),
               const Spacer(),
-
-              if (isCompact)
-                // Compact menu with dropdown
-                _buildCompactMenu(context)
-              else
-                // Full menu
-                _buildFullMenu(context),
+              if (isCompact) _buildCompactMenu(context) else _buildFullMenu(context),
             ],
           ),
         );
@@ -54,6 +46,7 @@ class CustomAppBar extends StatelessWidget {
     );
   }
 
+  // [Franco]: Menu el Web aw el shashat el kebira
   Widget _buildFullMenu(BuildContext context) {
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -66,25 +59,26 @@ class CustomAppBar extends StatelessWidget {
         const SizedBox(width: 8),
         IconButton(
           icon: const Icon(Icons.search),
-          onPressed: () {
-            Navigator.of(context).pushNamed('/search');
-          },
+          onPressed: () => Navigator.of(context).pushNamed('/search'),
           tooltip: 'Search Trips',
           color: primaryBlue,
         ),
         IconButton(
           icon: Icon(
-            Theme.of(context).brightness == Brightness.dark
-                ? Icons.light_mode
-                : Icons.dark_mode,
+            Theme.of(context).brightness == Brightness.dark ? Icons.light_mode : Icons.dark_mode,
             color: primaryBlue,
           ),
           onPressed: onThemeToggle,
           tooltip: 'Toggle theme',
         ),
         const SizedBox(width: 8),
+        
+        // [Franco]: El zorar dah bey-ghayar shaklo (Sign In vs Profile)
+        // 3ala 7asab el user logged in wala la2
         ElevatedButton(
-          onPressed: onAuthAction,
+          onPressed: isLoggedIn 
+              ? () => navigateTo(AppPage.profile) // Law logged in, rooh el profile
+              : onAuthAction,                   // Law la2, talle3 el auth modal
           style: ElevatedButton.styleFrom(
             backgroundColor: primaryBlue,
             foregroundColor: Colors.white,
@@ -96,23 +90,20 @@ class CustomAppBar extends StatelessWidget {
     );
   }
 
+  // [Franco]: Menu el Mobile (Dropdown menu)
   Widget _buildCompactMenu(BuildContext context) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         IconButton(
           icon: const Icon(Icons.search),
-          onPressed: () {
-            Navigator.of(context).pushNamed('/search');
-          },
+          onPressed: () => Navigator.of(context).pushNamed('/search'),
           tooltip: 'Search Trips',
           color: primaryBlue,
         ),
         IconButton(
           icon: Icon(
-            Theme.of(context).brightness == Brightness.dark
-                ? Icons.light_mode
-                : Icons.dark_mode,
+            Theme.of(context).brightness == Brightness.dark ? Icons.light_mode : Icons.dark_mode,
             color: primaryBlue,
           ),
           onPressed: onThemeToggle,
@@ -123,133 +114,30 @@ class CustomAppBar extends StatelessWidget {
           icon: const Icon(Icons.menu, color: primaryBlue),
           tooltip: 'Menu',
           onSelected: (AppPage page) {
+            // [Franco]: Hena law ekhtar "Profile/Sign In" men el menu el soghayara
             if (page == AppPage.profile) {
-              onAuthAction();
+              if (isLoggedIn) {
+                navigateTo(AppPage.profile);
+              } else {
+                onAuthAction();
+              }
             } else {
               navigateTo(page);
             }
           },
           itemBuilder: (BuildContext context) => <PopupMenuEntry<AppPage>>[
-            PopupMenuItem<AppPage>(
-              value: AppPage.home,
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.home,
-                    color: currentPage == AppPage.home ? accentOrange : primaryBlue,
-                    size: 20,
-                  ),
-                  const SizedBox(width: 12),
-                  Text(
-                    'Home',
-                    style: TextStyle(
-                      color: currentPage == AppPage.home ? accentOrange : null,
-                      fontWeight: currentPage == AppPage.home
-                          ? FontWeight.bold
-                          : FontWeight.normal,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            PopupMenuItem<AppPage>(
-              value: AppPage.trips,
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.card_travel,
-                    color: currentPage == AppPage.trips ? accentOrange : primaryBlue,
-                    size: 20,
-                  ),
-                  const SizedBox(width: 12),
-                  Text(
-                    'My Trips',
-                    style: TextStyle(
-                      color: currentPage == AppPage.trips ? accentOrange : null,
-                      fontWeight: currentPage == AppPage.trips
-                          ? FontWeight.bold
-                          : FontWeight.normal,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            PopupMenuItem<AppPage>(
-              value: AppPage.map,
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.map,
-                    color: currentPage == AppPage.map ? accentOrange : primaryBlue,
-                    size: 20,
-                  ),
-                  const SizedBox(width: 12),
-                  Text(
-                    'Map',
-                    style: TextStyle(
-                      color: currentPage == AppPage.map ? accentOrange : null,
-                      fontWeight: currentPage == AppPage.map
-                          ? FontWeight.bold
-                          : FontWeight.normal,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            PopupMenuItem<AppPage>(
-              value: AppPage.savedLocations,
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.bookmark,
-                    color: currentPage == AppPage.savedLocations ? accentOrange : primaryBlue,
-                    size: 20,
-                  ),
-                  const SizedBox(width: 12),
-                  Text(
-                    'Saved',
-                    style: TextStyle(
-                      color: currentPage == AppPage.savedLocations ? accentOrange : null,
-                      fontWeight: currentPage == AppPage.savedLocations
-                          ? FontWeight.bold
-                          : FontWeight.normal,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            PopupMenuItem<AppPage>(
-              value: AppPage.community,
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.groups,
-                    color: currentPage == AppPage.community ? accentOrange : primaryBlue,
-                    size: 20,
-                  ),
-                  const SizedBox(width: 12),
-                  Text(
-                    'Community',
-                    style: TextStyle(
-                      color: currentPage == AppPage.community ? accentOrange : null,
-                      fontWeight: currentPage == AppPage.community
-                          ? FontWeight.bold
-                          : FontWeight.normal,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            _buildPopupItem(AppPage.home, Icons.home, 'Home'),
+            _buildPopupItem(AppPage.trips, Icons.card_travel, 'My Trips'),
+            _buildPopupItem(AppPage.map, Icons.map, 'Map'),
+            _buildPopupItem(AppPage.savedLocations, Icons.bookmark, 'Saved'),
+            _buildPopupItem(AppPage.community, Icons.groups, 'Community'),
             const PopupMenuDivider(),
             PopupMenuItem<AppPage>(
               value: AppPage.profile,
               child: Row(
                 children: [
-                  Icon(
-                    isLoggedIn ? Icons.person : Icons.login,
-                    color: primaryBlue,
-                    size: 20,
-                  ),
+                  // [Franco]: Icon btet-ghayar 7asab el login state
+                  Icon(isLoggedIn ? Icons.person : Icons.login, color: primaryBlue, size: 20),
                   const SizedBox(width: 12),
                   Text(
                     isLoggedIn ? 'Profile' : 'Sign In',
@@ -261,6 +149,27 @@ class CustomAppBar extends StatelessWidget {
           ],
         ),
       ],
+    );
+  }
+
+  PopupMenuItem<AppPage> _buildPopupItem(AppPage page, IconData icon, String title) {
+    final bool isActive = currentPage == page;
+    return PopupMenuItem<AppPage>(
+      value: page,
+      child: Row(
+        children: [
+          // [Franco]: Law el saf7a de heyya elly maftoo7a, khalli el icon orange
+          Icon(icon, color: isActive ? accentOrange : primaryBlue, size: 20),
+          const SizedBox(width: 12),
+          Text(
+            title,
+            style: TextStyle(
+              color: isActive ? accentOrange : null,
+              fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
