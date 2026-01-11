@@ -15,35 +15,34 @@ class WeatherWidget extends StatefulWidget {
 }
 
 class _WeatherWidgetState extends State<WeatherWidget> {
-  // Read from .env file
-  static final String _apiKey = dotenv.env["WEATHER_API_KEY"] ?? '';
-  static const String _baseUrl = 'https://api.openweathermap.org/data/2.5/weather';
+  late Future<Map<String, dynamic>> _weatherFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _weatherFuture = fetchWeather();
+  }
 
   Future<Map<String, dynamic>> fetchWeather() async {
-    final key = _apiKey;
-    final city = widget.location.split(',').first.split('&').first.trim().replaceAll(' ', '%20'); //urls cannot have spaces so replace with '%20'
-    
-    // 1. Try WeatherAPI.com first
+    String key = '';
     try {
-      final url = Uri.parse('https://api.weatherapi.com/v1/current.json?key=$key&q=$city&aqi=no');
-      final response = await http.get(url);
-      
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final current = data['current'];
-        final condition = current['condition'];
-        return {
-          'temperature': current['temp_c'].round().toString(),
-          'condition': condition['text'],
-          'description': condition['text'],
-          'humidity': current['humidity'].toString(),
-          'icon_url': 'https:${condition['icon']}',
-          'city': data['location']['name'],
-        };
+      key = dotenv.env["WEATHER_API_KEY"] ?? '';
+    } catch (e) {
+      if (e.toString().contains('NotInitializedError')) {
+        throw Exception('Environment not initialized. Please restart the app.');
       }
-    } catch (_) {}
+      rethrow;
+    }
+    
+    if (key.isEmpty) {
+      throw Exception('Weather API Key is missing in .env');
+    }
 
-    // 2. Try OpenWeatherMap (Fallback)
+    final city = Uri.encodeComponent(
+      widget.location.split(',').first.split('&').first.trim(),
+    );
+    
+    // Use OpenWeatherMap API
     try {
       final url = Uri.parse('https://api.openweathermap.org/data/2.5/weather?q=$city&appid=$key&units=metric');
       final response = await http.get(url);
@@ -58,14 +57,22 @@ class _WeatherWidgetState extends State<WeatherWidget> {
           'city': data['name'],
         };
       } else if (response.statusCode == 401) {
-        throw Exception('Invalid API Key (Tried both WeatherAPI & OpenWeather)');
+        final errorData = json.decode(response.body);
+        final errorMsg = errorData['message'] ?? 'Invalid API Key';
+        throw Exception('Invalid API Key: $errorMsg. Please check your OpenWeatherMap API key in assets/.env');
+      } else if (response.statusCode == 404) {
+        throw Exception('City not found. Please check the location name.');
       } else {
-        final msg = json.decode(response.body)['message'] ?? 'Unknown Error';
-        throw Exception(msg);
+        final errorData = json.decode(response.body);
+        final errorMsg = errorData['message'] ?? 'Unknown Error';
+        throw Exception('Weather API Error: $errorMsg');
       }
     } catch (e) {
-      if (e.toString().contains('Invalid API Key')) rethrow;
-      throw Exception('Weather Error: $e');
+      debugPrint('OpenWeather error: $e');
+      if (e.toString().contains('Invalid API Key') || e.toString().contains('City not found')) {
+        rethrow;
+      }
+      throw Exception('Failed to fetch weather data. Please check your internet connection and API key.');
     }
   }
 
@@ -120,7 +127,7 @@ class _WeatherWidgetState extends State<WeatherWidget> {
           ),
           const SizedBox(height: 20),
           FutureBuilder<Map<String, dynamic>>(
-            future: fetchWeather(),
+            future: _weatherFuture,
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(
@@ -166,7 +173,9 @@ class _WeatherWidgetState extends State<WeatherWidget> {
                       const SizedBox(height: 10),
                       TextButton.icon(
                         onPressed: () {
-                          setState(() {});
+                          setState(() {
+                            _weatherFuture = fetchWeather();
+                          });
                         },
                         icon: const Icon(Icons.refresh, size: 18),
                         label: const Text('Retry'),
