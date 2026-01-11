@@ -46,7 +46,6 @@ class AdminProvider extends ChangeNotifier {
     required String password,
     required String name,
     String? bio,
-    String? avatar,
   }) async {
     _errorMessage = null;
     notifyListeners();
@@ -57,7 +56,6 @@ class AdminProvider extends ChangeNotifier {
         password: password,
         name: name,
         bio: bio,
-        avatar: avatar,
       );
       _users.insert(0, newUser);
       notifyListeners();
@@ -75,7 +73,6 @@ class AdminProvider extends ChangeNotifier {
     String? name,
     String? email,
     String? bio,
-    String? avatar,
   }) async {
     _errorMessage = null;
     notifyListeners();
@@ -86,7 +83,6 @@ class AdminProvider extends ChangeNotifier {
         name: name,
         email: email,
         bio: bio,
-        avatar: avatar,
       );
 
       // Update local state
@@ -96,7 +92,6 @@ class AdminProvider extends ChangeNotifier {
           name: name,
           email: email,
           bio: bio,
-          avatar: avatar,
         );
       }
       notifyListeners();
