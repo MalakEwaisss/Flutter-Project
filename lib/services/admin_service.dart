@@ -33,7 +33,6 @@ class AdminService {
     required String password,
     required String name,
     String? bio,
-    String? avatar,
   }) async {
     try {
       // Create user in Supabase Auth
@@ -55,7 +54,6 @@ class AdminService {
         'name': name,
         'email': email,
         'bio': bio,
-        'avatar': avatar,
       };
 
       await _supabase.from('profiles').insert(profileData);
@@ -65,7 +63,6 @@ class AdminService {
         name: name,
         email: email,
         bio: bio,
-        avatar: avatar,
         createdAt: DateTime.now(),
       );
     } on AuthException catch (e) {
@@ -88,14 +85,12 @@ class AdminService {
     String? name,
     String? email,
     String? bio,
-    String? avatar,
   }) async {
     try {
       final updates = <String, dynamic>{};
       if (name != null) updates['name'] = name;
       if (email != null) updates['email'] = email;
       if (bio != null) updates['bio'] = bio;
-      if (avatar != null) updates['avatar'] = avatar;
 
       if (updates.isEmpty) return;
 

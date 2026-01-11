@@ -57,7 +57,7 @@ class TripModel {
 
   // Convert to JSON (for Supabase insert/update)
   Map<String, dynamic> toJson() {
-    return {
+    final json = {
       'title': title,
       'location': location,
       'rating': rating,
@@ -70,6 +70,13 @@ class TripModel {
       'class': tripClass,
       'description': description,
     };
+
+    // Only include id if it's not empty (for updates)
+    if (id.isNotEmpty) {
+      json['id'] = id;
+    }
+
+    return json;
   }
 
   // Convert to Map format compatible with existing trip_data.dart format

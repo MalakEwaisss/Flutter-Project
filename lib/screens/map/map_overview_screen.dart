@@ -345,12 +345,9 @@ class _RealMapView extends StatelessWidget {
           options: MapOptions(
             initialCenter: mapProvider.mapCenter,
             initialZoom: mapProvider.mapZoom,
-            minZoom: 1.5,
+            minZoom: 2.0,
             maxZoom: 18.0,
-            interactionOptions: const InteractionOptions(
-              flags: InteractiveFlag.all,
-            ),
-          ),
+              ),
           children: [
             TileLayer(
               urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',

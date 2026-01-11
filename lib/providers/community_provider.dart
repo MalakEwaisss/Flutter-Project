@@ -85,10 +85,12 @@ class CommunityProvider with ChangeNotifier {
             .order('created_at', ascending: false);
       } else {
         // Load groups user is a member of
-        final memberRows = await supabase
-            .from('group_members')
-            .select('group_id')
-            .eq('user_id', user.id) as List<dynamic>;
+        final memberRows =
+            await supabase
+                    .from('group_members')
+                    .select('group_id')
+                    .eq('user_id', user.id)
+                as List<dynamic>;
         final groupIds = memberRows.map((r) => r['group_id']).toList();
 
         if (groupIds.isEmpty) {
@@ -108,7 +110,7 @@ class CommunityProvider with ChangeNotifier {
         final groupId = groupData['id'].toString();
         final isPublic = groupData['is_public'] ?? true;
         final isOwner = groupData['owner_id'] == user.id;
-        
+
         // Check if user is a member
         final isMember = await _isUserMember(groupId, user.id);
 
@@ -126,21 +128,23 @@ class CommunityProvider with ChangeNotifier {
               .toList();
         }
 
-        loadedGroups.add(TripGroup(
-          id: groupId,
-          groupName: groupData['group_name'],
-          tripId: groupData['trip_id'],
-          tripName: groupData['trip_name'],
-          destination: groupData['destination'],
-          tripDate: groupData['trip_date'],
-          description: groupData['description'],
-          ownerId: groupData['owner_id'],
-          ownerName: groupData['owner_name'],
-          members: members,
-          createdAt: groupData['created_at'],
-          groupImage: groupData['group_image'],
-          isPublic: isPublic,
-        ));
+        loadedGroups.add(
+          TripGroup(
+            id: groupId,
+            groupName: groupData['group_name'],
+            tripId: groupData['trip_id'],
+            tripName: groupData['trip_name'],
+            destination: groupData['destination'],
+            tripDate: groupData['trip_date'],
+            description: groupData['description'],
+            ownerId: groupData['owner_id'],
+            ownerName: groupData['owner_name'],
+            members: members,
+            createdAt: groupData['created_at'],
+            groupImage: groupData['group_image'],
+            isPublic: isPublic,
+          ),
+        );
 
         // Load pending requests for owned groups
         if (isOwner) {
@@ -199,15 +203,15 @@ class CommunityProvider with ChangeNotifier {
       // Use Supabase Admin API to list all users
       // Note: This requires proper RLS policies or a server-side function
       // For now, we'll get users who have user metadata set
-      
+
       // Get all unique users from auth.users via their metadata
       // Since we can't directly query auth.users, we use a workaround:
       // 1. Get users from group_members
       // 2. Get users from trip_groups owners
       // 3. Query for all users who have logged in (via a profiles table if you have one)
-      
+
       final Map<String, UserProfile> uniqueUsers = {};
-      
+
       // Strategy 1: Get from group members
       final allMembersData = await supabase
           .from('group_members')
@@ -250,7 +254,7 @@ class CommunityProvider with ChangeNotifier {
         final profilesData = await supabase
             .from('profiles')
             .select('id, full_name, email, avatar_url, bio');
-        
+
         for (var profile in profilesData as List) {
           final userId = profile['id'];
           if (userId != user.id) {
@@ -295,7 +299,8 @@ class CommunityProvider with ChangeNotifier {
           .maybeSingle();
 
       if (existing != null) {
-        _error = 'A group with this name already exists. Please choose a different name.';
+        _error =
+            'A group with this name already exists. Please choose a different name.';
         _isLoading = false;
         notifyListeners();
         return false;
@@ -483,16 +488,14 @@ class CommunityProvider with ChangeNotifier {
             .maybeSingle();
 
         if (existing != null) {
-          _error = 'A group with this name already exists. Please choose a different name.';
+          _error =
+              'A group with this name already exists. Please choose a different name.';
           notifyListeners();
           return false;
         }
       }
 
-      await supabase
-          .from('trip_groups')
-          .update(updates)
-          .eq('id', groupId);
+      await supabase.from('trip_groups').update(updates).eq('id', groupId);
 
       await loadGroups();
       return true;
@@ -508,22 +511,13 @@ class CommunityProvider with ChangeNotifier {
   Future<bool> deleteGroup(String groupId) async {
     try {
       // Delete join requests
-      await supabase
-          .from('join_requests')
-          .delete()
-          .eq('group_id', groupId);
-      
+      await supabase.from('join_requests').delete().eq('group_id', groupId);
+
       // Delete all members
-      await supabase
-          .from('group_members')
-          .delete()
-          .eq('group_id', groupId);
-      
+      await supabase.from('group_members').delete().eq('group_id', groupId);
+
       // Delete the group
-      await supabase
-          .from('trip_groups')
-          .delete()
-          .eq('id', groupId);
+      await supabase.from('trip_groups').delete().eq('id', groupId);
 
       _groups.removeWhere((g) => g.id == groupId);
       notifyListeners();
@@ -539,10 +533,7 @@ class CommunityProvider with ChangeNotifier {
   /// Remove a member from a group
   Future<bool> removeMember(String groupId, String memberId) async {
     try {
-      await supabase
-          .from('group_members')
-          .delete()
-          .eq('id', memberId);
+      await supabase.from('group_members').delete().eq('id', memberId);
 
       // Update local state
       final groupIndex = _groups.indexWhere((g) => g.id == groupId);
@@ -628,11 +619,13 @@ class CommunityProvider with ChangeNotifier {
   /// Search users (for adding members)
   List<UserProfile> searchUsers(String query) {
     if (query.isEmpty) return _suggestedUsers;
-    
+
     return _suggestedUsers
-        .where((user) =>
-            user.name.toLowerCase().contains(query.toLowerCase()) ||
-            user.email.toLowerCase().contains(query.toLowerCase()))
+        .where(
+          (user) =>
+              user.name.toLowerCase().contains(query.toLowerCase()) ||
+              user.email.toLowerCase().contains(query.toLowerCase()),
+        )
         .toList();
   }
 

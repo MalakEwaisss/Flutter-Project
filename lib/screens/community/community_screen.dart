@@ -279,11 +279,17 @@ class _CommunityScreenState extends State<CommunityScreen> {
     );
   }
 
+
   Widget _buildNotLoggedInView() {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Community & Groups'),
         backgroundColor: primaryBlue,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => widget.navigateTo(AppPage.home),
+          tooltip: 'Back to Home',
+        ),
       ),
       body: EmptyStateWidget(
         icon: Icons.lock_outline,
