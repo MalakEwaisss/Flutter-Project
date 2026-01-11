@@ -44,18 +44,7 @@ class AdminUsersScreen extends StatelessWidget {
                     contentPadding: const EdgeInsets.all(16),
                     leading: CircleAvatar(
                       backgroundColor: accentOrange.withOpacity(0.2),
-                      child: user.avatar != null && user.avatar!.isNotEmpty
-                          ? ClipOval(
-                              child: Image.network(
-                                user.avatar!,
-                                width: 40,
-                                height: 40,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) =>
-                                    Icon(Icons.person, color: accentOrange),
-                              ),
-                            )
-                          : Icon(Icons.person, color: accentOrange),
+                      child: Icon(Icons.person, color: accentOrange),
                     ),
                     title: Text(
                       user.name,

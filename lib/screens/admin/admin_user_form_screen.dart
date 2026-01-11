@@ -19,7 +19,6 @@ class _AdminUserFormScreenState extends State<AdminUserFormScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _bioController = TextEditingController();
-  final _avatarController = TextEditingController();
   bool _isLoading = false;
 
   bool get isEditing => widget.user != null;
@@ -31,7 +30,6 @@ class _AdminUserFormScreenState extends State<AdminUserFormScreen> {
       _nameController.text = widget.user!.name;
       _emailController.text = widget.user!.email;
       _bioController.text = widget.user!.bio ?? '';
-      _avatarController.text = widget.user!.avatar ?? '';
     }
   }
 
@@ -41,7 +39,6 @@ class _AdminUserFormScreenState extends State<AdminUserFormScreen> {
     _emailController.dispose();
     _passwordController.dispose();
     _bioController.dispose();
-    _avatarController.dispose();
     super.dispose();
   }
 
@@ -61,9 +58,6 @@ class _AdminUserFormScreenState extends State<AdminUserFormScreen> {
         bio: _bioController.text.trim().isEmpty
             ? null
             : _bioController.text.trim(),
-        avatar: _avatarController.text.trim().isEmpty
-            ? null
-            : _avatarController.text.trim(),
       );
     } else {
       success = await adminProvider.createUser(
@@ -73,9 +67,6 @@ class _AdminUserFormScreenState extends State<AdminUserFormScreen> {
         bio: _bioController.text.trim().isEmpty
             ? null
             : _bioController.text.trim(),
-        avatar: _avatarController.text.trim().isEmpty
-            ? null
-            : _avatarController.text.trim(),
       );
     }
 
@@ -178,12 +169,6 @@ class _AdminUserFormScreenState extends State<AdminUserFormScreen> {
                 label: 'Bio (Optional)',
                 icon: Icons.info,
                 maxLines: 3,
-              ),
-              const SizedBox(height: 16),
-              _buildTextField(
-                controller: _avatarController,
-                label: 'Avatar URL (Optional)',
-                icon: Icons.image,
               ),
               const SizedBox(height: 32),
               ElevatedButton(

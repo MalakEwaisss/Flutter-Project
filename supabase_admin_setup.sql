@@ -33,30 +33,34 @@ ALTER TABLE trips ENABLE ROW LEVEL SECURITY;
 
 -- Drop existing policies if they exist (to avoid errors on re-run)
 DROP POLICY IF EXISTS "Anyone can view trips" ON trips;
-DROP POLICY IF EXISTS "Only authenticated users can insert trips" ON trips;
-DROP POLICY IF EXISTS "Only authenticated users can update trips" ON trips;
-DROP POLICY IF EXISTS "Only authenticated users can delete trips" ON trips;
+DROP POLICY IF EXISTS "Authenticated users can insert trips" ON trips;
+DROP POLICY IF EXISTS "Authenticated users can update trips" ON trips;
+DROP POLICY IF EXISTS "Authenticated users can delete trips" ON trips;
 
 -- RLS Policy: Anyone can view trips (public access)
 CREATE POLICY "Anyone can view trips"
   ON trips FOR SELECT
   USING (true);
 
--- RLS Policy: Only authenticated users can insert trips
--- (In practice, only admin will do this from the app)
-CREATE POLICY "Only authenticated users can insert trips"
+-- RLS Policy: Authenticated users can insert trips
+-- Note: In production, you might want to restrict this to admin users only
+CREATE POLICY "Authenticated users can insert trips"
   ON trips FOR INSERT
-  WITH CHECK (auth.uid() IS NOT NULL);
+  TO authenticated
+  WITH CHECK (true);
 
--- RLS Policy: Only authenticated users can update trips
-CREATE POLICY "Only authenticated users can update trips"
+-- RLS Policy: Authenticated users can update trips
+CREATE POLICY "Authenticated users can update trips"
   ON trips FOR UPDATE
-  USING (auth.uid() IS NOT NULL);
+  TO authenticated
+  USING (true)
+  WITH CHECK (true);
 
--- RLS Policy: Only authenticated users can delete trips
-CREATE POLICY "Only authenticated users can delete trips"
+-- RLS Policy: Authenticated users can delete trips
+CREATE POLICY "Authenticated users can delete trips"
   ON trips FOR DELETE
-  USING (auth.uid() IS NOT NULL);
+  TO authenticated
+  USING (true);
 
 -- ================================================================================
 -- TABLE 2: PROFILES (Extended user information)
