@@ -234,6 +234,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     );
   }
 
+//helper reusable UI function
   Widget _buildDialogDetailRow(String label, String value) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
